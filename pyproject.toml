@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "todo-tui"
+version = "0.1.0"
+description = "ターミナルで動くTODO・タスク管理アプリ"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+keywords = ["todo", "task", "tui", "terminal", "calendar"]
+classifiers = [
+    "Environment :: Console",
+    "Natural Language :: Japanese",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "textual>=6.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+todo = "todo_tui.__main__:main"

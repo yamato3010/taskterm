@@ -1,0 +1,100 @@
+/* todo - Textual CSS スタイル
+
+   色は端末のANSIパレット (ユーザーのターミナル配色設定) に追従させる。
+   テーマ自体も ansi-dark を使っているため、ここで指定するのは
+   パネルの区切りとレイアウトが中心。 */
+
+Screen {
+    background: ansi_default;
+    layout: vertical;
+}
+
+#main {
+    height: 1fr;
+    margin: 0 1;
+}
+
+/* ── 左: TODOリスト ───────────── */
+#task-panel {
+    width: 1fr;
+    min-width: 32;
+    border: round ansi_bright_black;
+    background: ansi_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+/* 操作対象のパネルが分かるように、フォーカス中は枠の色を変える */
+#task-panel:focus-within,
+#calendar-panel:focus-within {
+    border: round ansi_blue;
+}
+
+#task-table {
+    height: 1fr;
+    background: ansi_black;
+}
+
+#task-detail {
+    dock: bottom;
+    height: 1;
+    padding: 0 1;
+    background: ansi_bright_black;
+    color: ansi_white;
+}
+
+/* ── 右: カレンダー + 内訳 ────── */
+#side-panel {
+    width: 31;
+}
+
+#calendar-panel {
+    height: 10;
+    padding: 0 1;
+    border: round ansi_bright_black;
+    background: ansi_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+#summary-panel {
+    height: 1fr;
+    min-height: 6;
+    padding: 0 1;
+    border: round ansi_bright_black;
+    background: ansi_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+/* ── 追加・編集モーダル ────────── */
+TaskEditScreen {
+    align: center middle;
+    background: ansi_default;
+}
+
+#edit-dialog {
+    width: 62;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round ansi_blue;
+    background: ansi_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+#edit-dialog Label {
+    margin-top: 1;
+    color: ansi_bright_black;
+}
+
+#edit-buttons {
+    height: auto;
+    margin-top: 1;
+    align-horizontal: right;
+}
+
+#edit-buttons Button {
+    margin-left: 2;
+}
