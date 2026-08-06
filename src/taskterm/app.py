@@ -19,6 +19,7 @@ from textual.widgets import Footer, Header, Static
 from . import storage
 from .config import Config
 from .models import Task, format_due, next_priority, priority_label
+from .screens.about import AboutScreen
 from .screens.confirm import ConfirmDeleteScreen
 from .screens.memo import MemoViewScreen
 from .screens.settings import SettingsScreen
@@ -64,6 +65,7 @@ class TodoApp(App):
         Binding("comma", "settings", "設定"),
         Binding("question_mark", "show_help_panel", "ヘルプ"),
         Binding("q", "quit", "終了"),
+        Binding("i", "about", "このアプリについて", show=False),
         Binding("u", "undo", "削除を元に戻す", show=False),
         Binding("p", "cycle_priority", "優先度を切り替え", show=False),
         Binding("t", "today", "今日に戻る", show=False),
@@ -462,3 +464,7 @@ class TodoApp(App):
 
         self._save()
         self.notify("設定を保存しました", timeout=4)
+
+    def action_about(self) -> None:
+        """このアプリについての画面を開く"""
+        self.push_screen(AboutScreen())
