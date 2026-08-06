@@ -11,11 +11,10 @@ import logging
 import os
 from pathlib import Path
 
+from .config import APP_DIR_NAME, Config
 from .models import Task
 
 log = logging.getLogger(__name__)
-
-APP_DIR_NAME = "todo-tui"
 
 
 def data_dir() -> Path:
@@ -30,11 +29,14 @@ def tasks_path() -> Path:
     return data_dir() / "tasks.json"
 
 
-def load_tasks() -> list[Task]:
+def load_tasks(config: Config) -> list[Task]:
     """タスクを読み込む
 
     ファイルが無ければ空のリストを返す。読めない・形式が違う場合は
     ``tasks.json.broken`` に退避してから空で始める (保存で上書きして失うのを防ぐ)。
+
+    設定に無いステータス・タグを参照しているタスクと、ステータスを持たない
+    旧形式のタスク (完了フラグだけの時代のデータ) は ``config`` に合わせて直す。
     """
     path = tasks_path()
     try:
@@ -55,9 +57,12 @@ def load_tasks() -> list[Task]:
     tasks: list[Task] = []
     for item in data:
         try:
-            tasks.append(Task.from_dict(item))
+            task = Task.from_dict(item)
         except (AttributeError, KeyError, TypeError, ValueError) as e:
             log.warning("読み込めないタスクを飛ばします (%r): %s", item, e)
+            continue
+        config.normalize_task(task, legacy_done=bool(item.get("done")))
+        tasks.append(task)
     return tasks
 
 

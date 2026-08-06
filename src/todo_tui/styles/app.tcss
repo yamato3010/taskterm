@@ -77,6 +77,9 @@ TaskEditScreen {
     width: 62;
     max-width: 90%;
     height: auto;
+    /* 端末が低いときは項目が入りきらないのでスクロールさせる */
+    max-height: 100%;
+    overflow-y: auto;
     padding: 1 2;
     border: round ansi_blue;
     background: ansi_black;
@@ -96,5 +99,146 @@ TaskEditScreen {
 }
 
 #edit-buttons Button {
+    margin-left: 2;
+}
+
+/* 入力欄とプルダウンは枠を省いて高さを詰めている (端末が低くてもフォームが
+   収まるように)。代わりに背景で入力欄の範囲を示す */
+#edit-dialog Input, #item-dialog Input,
+#edit-dialog Select > SelectCurrent, #item-dialog Select > SelectCurrent {
+    background: ansi_bright_black;
+}
+
+/* Select は枠線でしかフォーカスを示さない作りなので、枠を消すと変化が無くなる。
+   開いたときの選択行と同じ配色 (block-cursor) で塗って分かるようにする。
+   Input は Textual 側にフォーカス時の配色があるのでそれに任せる */
+#edit-dialog Select:focus > SelectCurrent, #item-dialog Select:focus > SelectCurrent {
+    background: $block-cursor-background;
+    color: $block-cursor-foreground;
+}
+
+/* SelectCurrent の中身は自前の色を持っているので、フォーカス時はまとめて上書きする */
+#edit-dialog Select:focus > SelectCurrent Static#label,
+#item-dialog Select:focus > SelectCurrent Static#label,
+#edit-dialog Select:focus > SelectCurrent .arrow,
+#item-dialog Select:focus > SelectCurrent .arrow {
+    color: $block-cursor-foreground;
+}
+
+/* 優先度とステータスは横に並べる */
+#edit-selects {
+    height: auto;
+}
+
+#edit-selects > Vertical {
+    width: 1fr;
+    height: auto;
+}
+
+#edit-selects > Vertical:last-of-type {
+    margin-left: 2;
+}
+
+#tags {
+    height: auto;
+    max-height: 6;
+    border: none;
+    background: ansi_black;
+}
+
+#no-tags {
+    color: ansi_bright_black;
+}
+
+/* ── 設定画面 ───────────────────── */
+SettingsScreen, ItemEditScreen {
+    align: center middle;
+    background: ansi_default;
+}
+
+#settings-dialog {
+    width: 76;
+    max-width: 96%;
+    height: auto;
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 1 2;
+    border: round ansi_blue;
+    background: ansi_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+#settings-lists {
+    height: 12;
+}
+
+#status-panel {
+    /* 名前・色・完了・使用の4列がちょうど収まる幅 */
+    width: 36;
+    height: 100%;
+    border: round ansi_bright_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+#tag-panel {
+    width: 1fr;
+    height: 100%;
+    margin-left: 1;
+    border: round ansi_bright_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+#status-panel:focus-within, #tag-panel:focus-within {
+    border: round ansi_blue;
+}
+
+#status-table, #tag-table {
+    height: 1fr;
+    background: ansi_black;
+}
+
+#settings-hint, #settings-note {
+    height: auto;
+    margin-top: 1;
+    color: ansi_bright_black;
+}
+
+#settings-buttons {
+    height: auto;
+    margin-top: 1;
+    align-horizontal: right;
+}
+
+#settings-buttons Button {
+    margin-left: 2;
+}
+
+/* ステータス・タグ1件の編集 */
+#item-dialog {
+    width: 52;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round ansi_blue;
+    background: ansi_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+#item-dialog Label {
+    margin-top: 1;
+    color: ansi_bright_black;
+}
+
+#item-buttons {
+    height: auto;
+    margin-top: 1;
+    align-horizontal: right;
+}
+
+#item-buttons Button {
     margin-left: 2;
 }

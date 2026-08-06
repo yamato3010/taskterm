@@ -43,6 +43,8 @@ class MonthCalendar(Widget):
 
     can_focus = True
 
+    BINDING_GROUP_TITLE = "カレンダー"
+
     # 矢印キーと vim 風の hjkl の両方で動かせるようにする
     BINDINGS = [
         Binding("left,h", "move_days(-1)", "前日", show=False),
