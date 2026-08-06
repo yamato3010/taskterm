@@ -1,4 +1,4 @@
-# todo(仮)
+# taskterm
 
 ターミナルで動くTODO・タスク管理アプリ。
 
@@ -6,11 +6,11 @@
 
 ```sh
 # 開発中はこのリポジトリの仮想環境から
-./myenv/bin/todo
+./myenv/bin/taskterm
 
 # インストールして使う場合
 pipx install .
-todo
+taskterm
 ```
 
 ## キー操作
@@ -26,7 +26,7 @@ todo
 | `m` | メモを全画面で開く (そこから編集もできる) |
 | `d` | 削除 |
 | `u` | 直前の削除を元に戻す |
-| `v` | 表示切替 (選択日のみ ⇄ 全件) |
+| `v` | 表示切替 (選択日のみ ⇄ 全件。次の起動でも同じ表示で始まります) |
 | `t` | カレンダーを今日に戻す |
 | `,` | 設定画面 (ステータス・タグの追加・編集) |
 | `?` | ヘルプ (全キーの一覧。`Esc` で閉じる) |
@@ -79,8 +79,8 @@ todo
 
 | ファイル | 内容 |
 |---|---|
-| `~/.local/share/todo-tui/tasks.json` | タスク (`XDG_DATA_HOME` があればそちら) |
-| `~/.config/todo-tui/config.json` | ステータス・タグの定義 (`XDG_CONFIG_HOME` があればそちら) |
+| `~/.local/share/taskterm/tasks.json` | タスク (`XDG_DATA_HOME` があればそちら) |
+| `~/.config/taskterm/config.json` | ステータス・タグの定義と `v` の表示状態 (`XDG_CONFIG_HOME` があればそちら) |
 
 タスクはステータス・タグをIDで参照しているので、設定画面で名前や色を変えても紐付きは保たれます。
 

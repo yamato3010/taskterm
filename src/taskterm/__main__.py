@@ -1,4 +1,4 @@
-"""todo - エントリーポイント"""
+"""taskterm - エントリーポイント"""
 
 from .app import TodoApp
 

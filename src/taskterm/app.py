@@ -1,4 +1,4 @@
-"""todo - メインアプリケーション"""
+"""taskterm - メインアプリケーション"""
 
 from __future__ import annotations
 
@@ -40,9 +40,9 @@ CSS_PATH = Path(__file__).parent / "styles" / "app.tcss"
 
 
 class TodoApp(App):
-    """todo アプリケーション"""
+    """taskterm アプリケーション"""
 
-    TITLE = "todo"
+    TITLE = "taskterm"
     CSS_PATH = CSS_PATH
     BINDING_GROUP_TITLE = "全体"
 

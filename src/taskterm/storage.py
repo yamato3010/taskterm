@@ -1,6 +1,6 @@
 """タスクの保存・読み込み
 
-タスクは JSON で ``~/.local/share/todo-tui/tasks.json`` に保存する
+タスクは JSON で ``~/.local/share/taskterm/tasks.json`` に保存する
 (``XDG_DATA_HOME`` があればそれに従う)。
 """
 

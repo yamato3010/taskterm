@@ -1,6 +1,6 @@
 """設定 (ステータス・タグ) の読み書き
 
-設定は JSON で ``~/.config/todo-tui/config.json`` に保存する
+設定は JSON で ``~/.config/taskterm/config.json`` に保存する
 (``XDG_CONFIG_HOME`` があればそれに従う)。ファイルが無い・壊れている場合は
 既定値で動作し、アプリの起動を妨げない。
 
@@ -21,7 +21,7 @@ from .models import Status, Tag, Task, new_id, priority_rank
 
 log = logging.getLogger(__name__)
 
-APP_DIR_NAME = "todo-tui"
+APP_DIR_NAME = "taskterm"
 
 
 def default_statuses() -> list[Status]:

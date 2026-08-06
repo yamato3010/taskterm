@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "todo-tui"
+name = "taskterm"
 version = "0.1.0"
 description = "ターミナルで動くTODO・タスク管理アプリ"
 readme = "README.md"
@@ -21,4 +21,4 @@ dependencies = [
 ]
 
 [project.scripts]
-todo = "todo_tui.__main__:main"
+taskterm = "taskterm.__main__:main"
