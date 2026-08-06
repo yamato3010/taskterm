@@ -19,6 +19,7 @@ from textual.widgets import Footer, Header, Static
 from . import storage
 from .config import Config
 from .models import Task, format_due, next_priority, priority_label
+from .screens.confirm import ConfirmDeleteScreen
 from .screens.memo import MemoViewScreen
 from .screens.settings import SettingsScreen
 from .screens.task_edit import TaskEditScreen
@@ -325,9 +326,18 @@ class TodoApp(App):
             self._save()
 
     def action_delete(self) -> None:
-        """選択中のタスクを削除する (u キーで元に戻せる)"""
+        """選択中のタスクを削除する (確認してから消す)"""
         task = self._selected_task()
         if task is None:
+            return
+        self.push_screen(
+            ConfirmDeleteScreen(task.title),
+            lambda confirmed: self._on_delete_confirmed(task, confirmed),
+        )
+
+    def _on_delete_confirmed(self, task: Task, confirmed: Optional[bool]) -> None:
+        """確認画面で削除を選んだときだけ消す (u キーで元に戻せる)"""
+        if not confirmed:
             return
         self._tasks = [t for t in self._tasks if t.id != task.id]
         self._deleted = task

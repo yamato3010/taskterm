@@ -198,6 +198,38 @@ MemoViewScreen, MemoEditScreen {
     border: none;
 }
 
+/* ── 削除の確認 ─────────────────── */
+ConfirmDeleteScreen {
+    align: center middle;
+    background: ansi_default;
+}
+
+#confirm-dialog {
+    width: 52;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round ansi_red;
+    background: ansi_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+    border-subtitle-color: ansi_bright_black;
+}
+
+#confirm-message {
+    height: auto;
+}
+
+#confirm-buttons {
+    height: auto;
+    margin-top: 1;
+    align-horizontal: right;
+}
+
+#confirm-buttons Button {
+    margin-left: 2;
+}
+
 /* ── 設定画面 ───────────────────── */
 SettingsScreen, ItemEditScreen {
     align: center middle;
