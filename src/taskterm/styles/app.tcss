@@ -35,16 +35,22 @@ Screen {
     background: ansi_black;
 }
 
-/* 一覧の下のメモ欄 (複数行。入りきらない分は m キーの全画面で読む) */
+/* 一覧の下の詳細欄 (1行目に概要、その下にメモ。
+   メモが入りきらない分は m キーの全画面で読む) */
 #memo-pane {
     dock: bottom;
-    height: 5;
+    height: 6;
     padding: 0 1;
     border-top: solid ansi_bright_black;
     border-title-color: ansi_white;
     border-title-style: bold;
     border-subtitle-color: ansi_bright_black;
     overflow: hidden;
+}
+
+/* 概要は必ず1行に収める (メモに残す行数を一定にするため) */
+#task-meta {
+    height: 1;
 }
 
 /* ── 右: カレンダー + 内訳 ────── */

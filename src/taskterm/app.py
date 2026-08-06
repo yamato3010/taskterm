@@ -30,12 +30,13 @@ log = logging.getLogger(__name__)
 
 
 def _overflows(memo: str, pane: Widget) -> bool:
-    """メモ欄に収まらない量か (折り返しを見込んだ行数で判定する)"""
+    """メモが詳細欄に収まらない量か (折り返しを見込んだ行数で判定する)"""
     width, height = pane.content_size.width, pane.content_size.height
     if width <= 0 or height <= 0:
         return False
     wrapped = sum(max(1, -(-cell_len(line) // width)) for line in memo.splitlines())
-    return wrapped > height
+    # 1行目はタスクの概要に使うため、メモに使えるのは残りの行
+    return wrapped > height - 1
 
 CSS_PATH = Path(__file__).parent / "styles" / "app.tcss"
 
@@ -87,11 +88,12 @@ class TodoApp(App):
         yield Header(show_clock=True)
 
         with Horizontal(id="main"):
-            # 左: TODOリスト (下端に選択中タスクのメモ)
+            # 左: TODOリスト (下端に選択中タスクの概要とメモ)
             with Vertical(id="task-panel"):
                 yield TaskTable(id="task-table")
                 with Container(id="memo-pane") as memo_pane:
-                    memo_pane.border_title = "メモ"
+                    memo_pane.border_title = "詳細"
+                    yield Static("", id="task-meta")
                     yield Static("", id="task-memo")
 
             # 右: カレンダーと内訳
@@ -223,26 +225,32 @@ class TodoApp(App):
         self.query_one("#summary", Static).update(text)
 
     def _update_memo(self) -> None:
-        """一覧の下のメモ欄を、選択中タスクのメモにする
+        """一覧の下の詳細欄を、選択中タスクの内容にする
 
-        折り返して出し、入りきらない分は m キーの全画面表示に任せる。
+        1行目にタスクの概要を出す (一覧のタグ列は幅に収まらない分を切っているため、
+        複数のタグはここで読む)。その下にメモを折り返して出し、入りきらない分は
+        m キーの全画面表示に任せる。
         """
         task = self.query_one("#task-table", TaskTable).selected_task
         pane = self.query_one("#memo-pane")
+        meta = self.query_one("#task-meta", Static)
         body = self.query_one("#task-memo", Static)
 
+        pane.border_title = "詳細"
         if task is None:
-            pane.border_title = "メモ"
+            meta.update("")
             body.update(Text("タスクがありません — a で追加", style="dim"))
             return
+
+        meta.update(Text(self._task_meta(task), style="dim", no_wrap=True, overflow="ellipsis"))
         if not task.memo:
-            pane.border_title = "メモ"
             body.update(Text("(メモなし) — m で書けます", style="dim"))
             return
 
         body.update(Text(task.memo))
         # 続きがあることが分かるように、収まらないときだけ見かたを添える
-        pane.border_title = "メモ (m で全文)" if _overflows(task.memo, pane) else "メモ"
+        if _overflows(task.memo, pane):
+            pane.border_title = "詳細 (m でメモ全文)"
 
     def _save(self) -> None:
         """タスクを保存して表示を更新する"""
@@ -360,19 +368,22 @@ class TodoApp(App):
         if task is None:
             return
         self.push_screen(
-            MemoViewScreen(task.title, self._memo_meta(task), task.memo),
+            MemoViewScreen(task.title, self._task_meta(task), task.memo),
             lambda memo: self._on_memo_edited(task, memo),
         )
 
-    def _memo_meta(self, task: Task) -> str:
-        """メモ画面の見出しに出すタスクの概要"""
-        parts = [self._config.status_of(task).name]
+    def _task_meta(self, task: Task) -> str:
+        """詳細欄とメモ画面の見出しに出すタスクの概要
+
+        タグを先頭に置く。ステータス・期限・優先度は一覧にも列があるので、
+        幅が足りずに末尾が切れる場合は、一覧では読めないタグだけが残る。
+        """
+        tags = [tag.name for tag in self._config.tags_of(task)]
+        parts = [" ".join(tags)] if tags else []
+        parts.append(self._config.status_of(task).name)
         if task.due:
             parts.append(format_due(task.due))
         parts.append(f"優先度 {priority_label(task.priority)}")
-        tags = [tag.name for tag in self._config.tags_of(task)]
-        if tags:
-            parts.append(" ".join(tags))
         return "   ".join(parts)
 
     def _on_memo_edited(self, task: Task, memo: Optional[str]) -> None:
