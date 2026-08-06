@@ -8,21 +8,33 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
+from textual.widget import Widget
 from textual.widgets import Footer, Header, Static
 
 from . import storage
 from .config import Config
-from .models import Task, format_due, next_priority
+from .models import Task, format_due, next_priority, priority_label
+from .screens.memo import MemoViewScreen
 from .screens.settings import SettingsScreen
 from .screens.task_edit import TaskEditScreen
 from .widgets.calendar import MonthCalendar
 from .widgets.task_list import TaskTable
 
 log = logging.getLogger(__name__)
+
+
+def _overflows(memo: str, pane: Widget) -> bool:
+    """メモ欄に収まらない量か (折り返しを見込んだ行数で判定する)"""
+    width, height = pane.content_size.width, pane.content_size.height
+    if width <= 0 or height <= 0:
+        return False
+    wrapped = sum(max(1, -(-cell_len(line) // width)) for line in memo.splitlines())
+    return wrapped > height
 
 CSS_PATH = Path(__file__).parent / "styles" / "app.tcss"
 
@@ -45,6 +57,7 @@ class TodoApp(App):
         Binding("s", "cycle_status", "状態"),
         Binding("d", "delete", "削除"),
         Binding("f", "filter_tag", "絞込"),
+        Binding("m", "memo", "メモ"),
         Binding("v", "toggle_view", "表示"),
         Binding("comma", "settings", "設定"),
         Binding("question_mark", "show_help_panel", "ヘルプ"),
@@ -77,7 +90,9 @@ class TodoApp(App):
             # 左: TODOリスト (下端に選択中タスクのメモ)
             with Vertical(id="task-panel"):
                 yield TaskTable(id="task-table")
-                yield Static("", id="task-detail")
+                with Container(id="memo-pane") as memo_pane:
+                    memo_pane.border_title = "メモ"
+                    yield Static("", id="task-memo")
 
             # 右: カレンダーと内訳
             with Vertical(id="side-panel"):
@@ -89,7 +104,8 @@ class TodoApp(App):
                     summary_panel.border_title = "内訳"
                     yield Static("", id="summary")
 
-        yield Footer()
+        # コマンドパレットの案内はフッターの幅を食うので出さない
+        yield Footer(show_command_palette=False)
 
     def on_mount(self) -> None:
         self.theme = self.THEME
@@ -104,7 +120,7 @@ class TodoApp(App):
 
     def on_data_table_row_highlighted(self) -> None:
         """カーソル移動でメモ表示を追従させる"""
-        self._update_detail()
+        self._update_memo()
 
     def on_data_table_row_selected(self) -> None:
         """一覧で Enter を押したら編集する"""
@@ -121,7 +137,7 @@ class TodoApp(App):
         self.query_one("#calendar", MonthCalendar).set_marks(self._marks())
         self._update_title(visible)
         self._update_summary(today)
-        self._update_detail()
+        self._update_memo()
 
     def _filtered_tasks(self) -> list[Task]:
         """タグの絞り込みを適用したタスク (f キーで切り替える)"""
@@ -206,16 +222,27 @@ class TodoApp(App):
 
         self.query_one("#summary", Static).update(text)
 
-    def _update_detail(self) -> None:
-        """一覧の下に、選択中タスクのメモを1行で出す"""
+    def _update_memo(self) -> None:
+        """一覧の下のメモ欄を、選択中タスクのメモにする
+
+        折り返して出し、入りきらない分は m キーの全画面表示に任せる。
+        """
         task = self.query_one("#task-table", TaskTable).selected_task
-        detail = self.query_one("#task-detail", Static)
+        pane = self.query_one("#memo-pane")
+        body = self.query_one("#task-memo", Static)
+
         if task is None:
-            detail.update(Text("タスクがありません — a で追加", style="dim"))
-        elif task.memo:
-            detail.update(Text(f"✎ {task.memo}", no_wrap=True, overflow="ellipsis"))
-        else:
-            detail.update(Text("(メモなし)", style="dim"))
+            pane.border_title = "メモ"
+            body.update(Text("タスクがありません — a で追加", style="dim"))
+            return
+        if not task.memo:
+            pane.border_title = "メモ"
+            body.update(Text("(メモなし) — m で書けます", style="dim"))
+            return
+
+        body.update(Text(task.memo))
+        # 続きがあることが分かるように、収まらないときだけ見かたを添える
+        pane.border_title = "メモ (m で全文)" if _overflows(task.memo, pane) else "メモ"
 
     def _save(self) -> None:
         """タスクを保存して表示を更新する"""
@@ -308,6 +335,34 @@ class TodoApp(App):
         self._tasks.append(self._deleted)
         self.notify(f"元に戻しました: {self._deleted.title}", timeout=4)
         self._deleted = None
+        self._save()
+
+    def action_memo(self) -> None:
+        """選択中タスクのメモを全画面で開く (そこから編集もできる)"""
+        task = self._selected_task()
+        if task is None:
+            return
+        self.push_screen(
+            MemoViewScreen(task.title, self._memo_meta(task), task.memo),
+            lambda memo: self._on_memo_edited(task, memo),
+        )
+
+    def _memo_meta(self, task: Task) -> str:
+        """メモ画面の見出しに出すタスクの概要"""
+        parts = [self._config.status_of(task).name]
+        if task.due:
+            parts.append(format_due(task.due))
+        parts.append(f"優先度 {priority_label(task.priority)}")
+        tags = [tag.name for tag in self._config.tags_of(task)]
+        if tags:
+            parts.append(" ".join(tags))
+        return "   ".join(parts)
+
+    def _on_memo_edited(self, task: Task, memo: Optional[str]) -> None:
+        """メモ画面で編集された場合だけ保存する (読むだけなら None が来る)"""
+        if memo is None:
+            return
+        task.memo = memo
         self._save()
 
     def action_toggle_view(self) -> None:

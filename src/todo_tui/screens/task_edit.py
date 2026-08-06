@@ -10,11 +10,13 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.content import Content
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Select, SelectionList
+from rich.text import Text
+from textual.widgets import Button, Input, Label, Select, SelectionList, Static
 from textual.widgets.selection_list import Selection
 
 from ..config import Config
 from ..models import DEFAULT_PRIORITY, PRIORITIES, Task, parse_due, textual_color
+from .memo import MemoEditScreen
 
 
 class TaskEditScreen(ModalScreen[Optional[Task]]):
@@ -29,6 +31,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
     BINDINGS = [
         Binding("escape", "cancel", "取消"),
         Binding("ctrl+s", "save", "保存"),
+        Binding("ctrl+o", "edit_memo", "メモを編集"),
     ]
 
     def __init__(
@@ -43,6 +46,8 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         self._target = task
         # 追加のときは、カレンダーで選んでいる日を期限の初期値にする
         self._due = task.due if task else default_due
+        # メモは別画面で編集するため、保存までここで持つ
+        self._memo = task.memo if task else ""
 
     def compose(self) -> ComposeResult:
         task = self._target
@@ -107,19 +112,17 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
             else:
                 yield Label("タグは設定画面 (, キー) で追加できます", id="no-tags")
 
-            yield Label("メモ")
-            yield Input(
-                value=task.memo if task else "",
-                placeholder="任意",
-                compact=True,
-                id="memo",
-            )
+            yield Label("メモ (複数行。Ctrl+O で全画面編集)")
+            with Horizontal(id="memo-row"):
+                yield Static(id="memo-preview")
+                yield Button("編集 (^O)", compact=True, id="edit-memo")
 
             with Horizontal(id="edit-buttons"):
                 yield Button("保存", variant="primary", compact=True, id="save")
                 yield Button("取消", compact=True, id="cancel")
 
     def on_mount(self) -> None:
+        self._show_memo_preview()
         self.query_one("#title", Input).focus()
 
     def on_input_submitted(self) -> None:
@@ -129,6 +132,8 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "save":
             self._save()
+        elif event.button.id == "edit-memo":
+            self.action_edit_memo()
         else:
             self.dismiss(None)
 
@@ -137,6 +142,29 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
 
     def action_save(self) -> None:
         self._save()
+
+    def action_edit_memo(self) -> None:
+        """メモを全画面で編集する"""
+        title = self.query_one("#title", Input).value.strip() or "タスク"
+        self.app.push_screen(MemoEditScreen(title, self._memo), self._on_memo_edited)
+
+    def _on_memo_edited(self, memo: Optional[str]) -> None:
+        """編集から戻ったら控えを更新する (保存はフォームの保存時)"""
+        if memo is not None:
+            self._memo = memo
+            self._show_memo_preview()
+
+    def _show_memo_preview(self) -> None:
+        """メモの1行目だけをフォームに出す"""
+        preview = self.query_one("#memo-preview", Static)
+        lines = self._memo.splitlines()
+        if not lines:
+            preview.update(Text("(なし)", style="dim"))
+            return
+        text = Text(lines[0], no_wrap=True, overflow="ellipsis")
+        if len(lines) > 1:
+            text.append(f"  … 全{len(lines)}行", style="dim")
+        preview.update(text)
 
     def _selected_tags(self) -> list[str]:
         """選択されているタグのID (設定の並び順で返す)"""
@@ -164,7 +192,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         priority = str(self.query_one("#priority", Select).value)
         status = str(self.query_one("#status", Select).value)
         tags = self._selected_tags()
-        memo = self.query_one("#memo", Input).value.strip()
+        memo = self._memo
 
         task = self._target
         if task is None:

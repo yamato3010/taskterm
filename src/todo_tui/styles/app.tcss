@@ -35,12 +35,16 @@ Screen {
     background: ansi_black;
 }
 
-#task-detail {
+/* 一覧の下のメモ欄 (複数行。入りきらない分は m キーの全画面で読む) */
+#memo-pane {
     dock: bottom;
-    height: 1;
+    height: 5;
     padding: 0 1;
-    background: ansi_bright_black;
-    color: ansi_white;
+    border-top: solid ansi_bright_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+    border-subtitle-color: ansi_bright_black;
+    overflow: hidden;
 }
 
 /* ── 右: カレンダー + 内訳 ────── */
@@ -148,6 +152,50 @@ TaskEditScreen {
 
 #no-tags {
     color: ansi_bright_black;
+}
+
+/* フォームのメモ欄は控えだけ (本文の編集は全画面) */
+#memo-row {
+    height: 1;
+}
+
+#memo-preview {
+    width: 1fr;
+    height: 1;
+}
+
+/* ── メモの全画面表示・編集 ────────── */
+MemoViewScreen, MemoEditScreen {
+    background: ansi_default;
+}
+
+#memo-dialog {
+    width: 100%;
+    height: 100%;
+    padding: 0 1;
+    border: round ansi_blue;
+    background: ansi_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+    border-subtitle-color: ansi_bright_black;
+}
+
+#memo-header {
+    height: auto;
+    padding: 0 1;
+    background: ansi_bright_black;
+}
+
+#memo-body {
+    height: 1fr;
+    padding: 1;
+    scrollbar-size-vertical: 1;
+}
+
+#memo-editor {
+    height: 1fr;
+    margin-top: 1;
+    border: none;
 }
 
 /* ── 設定画面 ───────────────────── */
