@@ -78,9 +78,11 @@ Screen {
 }
 
 /* ── 追加・編集モーダル ────────── */
+/* モーダルの背景は塗らず、後ろの画面を見えたままにする
+   (裏の画面は Textual 側で dim になるので前後の区別はつく) */
 TaskEditScreen {
     align: center middle;
-    background: ansi_default;
+    background: transparent;
 }
 
 #edit-dialog {
@@ -207,7 +209,7 @@ MemoViewScreen, MemoEditScreen {
 /* ── 削除の確認 ─────────────────── */
 ConfirmDeleteScreen {
     align: center middle;
-    background: ansi_default;
+    background: transparent;
 }
 
 #confirm-dialog {
@@ -239,7 +241,7 @@ ConfirmDeleteScreen {
 /* ── このアプリについて ─────────── */
 AboutScreen {
     align: center middle;
-    background: ansi_default;
+    background: transparent;
 }
 
 #about-dialog {
@@ -261,7 +263,7 @@ AboutScreen {
 /* ── 設定画面 ───────────────────── */
 SettingsScreen, ItemEditScreen {
     align: center middle;
-    background: ansi_default;
+    background: transparent;
 }
 
 #settings-dialog {
