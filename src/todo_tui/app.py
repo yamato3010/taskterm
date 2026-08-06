@@ -80,7 +80,6 @@ class TodoApp(App):
         self._config = Config.load()
         self._tasks: list[Task] = storage.load_tasks(self._config)
         self._deleted: Task | None = None  # u キーで戻せる、直前に削除したタスク
-        self._show_all = False  # False: 選択日のみ / True: 全件
         self._tag_filter: str | None = None  # 絞り込み中のタグID (None なら絞り込みなし)
 
     def compose(self) -> ComposeResult:
@@ -154,7 +153,7 @@ class TodoApp(App):
         どちらの場合もタグの絞り込みは効く。
         """
         tasks = self._filtered_tasks()
-        if self._show_all:
+        if self._config.show_all:
             return self._config.sort_tasks(tasks)
 
         selected = self.query_one("#calendar", MonthCalendar).selected
@@ -182,7 +181,7 @@ class TodoApp(App):
     def _update_title(self, visible: list[Task]) -> None:
         """左パネルのタイトルに、今出している範囲と件数を書く"""
         selected = self.query_one("#calendar", MonthCalendar).selected
-        scope = "全件" if self._show_all else format_due(selected)
+        scope = "全件" if self._config.show_all else format_due(selected)
         tag_name = self._filter_tag_name()
         scope += f" / {tag_name}" if tag_name else ""
         done = sum(1 for t in visible if self._config.is_done(t))
@@ -206,7 +205,7 @@ class TodoApp(App):
         text.append(f"期限切れ: {overdue}件\n", style="bold red" if overdue else "")
 
         text.append(f"期限なし: {sum(1 for t in open_tasks if t.due is None)}件")
-        text.append("\n" if self._show_all else "  (v で表示)\n", style="dim")
+        text.append("\n" if self._config.show_all else "  (v で表示)\n", style="dim")
 
         # ステータス別の件数 (設定の並び順・色で出す)
         text.append("\n")
@@ -252,6 +251,14 @@ class TodoApp(App):
             log.error("保存エラー: %s", e)
             self.notify(f"保存できませんでした: {e}", severity="error", timeout=8)
         self._refresh()
+
+    def _save_config(self) -> None:
+        """設定を保存する (失敗しても操作は続けられるよう、知らせるだけにする)"""
+        try:
+            self._config.save()
+        except OSError as e:
+            log.error("設定の保存エラー: %s", e)
+            self.notify(f"設定を保存できませんでした: {e}", severity="error", timeout=8)
 
     def _selected_task(self) -> Task | None:
         """一覧で選択中のタスク (無ければ知らせて None)"""
@@ -366,8 +373,9 @@ class TodoApp(App):
         self._save()
 
     def action_toggle_view(self) -> None:
-        """選択日のみ / 全件 を切り替える"""
-        self._show_all = not self._show_all
+        """選択日のみ / 全件 を切り替える (次の起動でも同じ表示で始める)"""
+        self._config.show_all = not self._config.show_all
+        self._save_config()
         self._refresh()
 
     def action_filter_tag(self) -> None:
@@ -423,11 +431,7 @@ class TodoApp(App):
         if config is None:
             return
         self._config = config
-        try:
-            config.save()
-        except OSError as e:
-            log.error("設定の保存エラー: %s", e)
-            self.notify(f"設定を保存できませんでした: {e}", severity="error", timeout=8)
+        self._save_config()
 
         # 設定から消されたステータス・タグを参照しているタスクを直す
         for task in self._tasks:

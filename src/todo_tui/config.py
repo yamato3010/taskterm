@@ -52,6 +52,7 @@ class Config:
 
     statuses: list[Status] = field(default_factory=default_statuses)
     tags: list[Tag] = field(default_factory=list)
+    show_all: bool = False  # 一覧の表示範囲 (False: 選択日のみ / True: 全件)
 
     # ── ステータス・タグの参照 ────────────────
 
@@ -149,7 +150,11 @@ class Config:
             log.warning("ステータスが空のため既定値を使います: %s", path)
             statuses = default_statuses()
 
-        return cls(statuses=_dedupe_ids(statuses), tags=_dedupe_ids(tags))
+        return cls(
+            statuses=_dedupe_ids(statuses),
+            tags=_dedupe_ids(tags),
+            show_all=bool(data.get("show_all", False)),
+        )
 
     def save(self) -> None:
         """設定を保存する。失敗した場合は OSError を送出する"""
@@ -161,6 +166,7 @@ class Config:
                 {
                     "statuses": [s.to_dict() for s in self.statuses],
                     "tags": [t.to_dict() for t in self.tags],
+                    "show_all": self.show_all,
                 },
                 f,
                 ensure_ascii=False,
