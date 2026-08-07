@@ -19,7 +19,6 @@ Screen {
     width: 1fr;
     min-width: 32;
     border: round ansi_bright_black;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
 }
@@ -32,7 +31,6 @@ Screen {
 
 #task-table {
     height: 1fr;
-    background: ansi_black;
 }
 
 /* 一覧の下の詳細欄 (1行目に概要、その下にメモ。
@@ -62,7 +60,6 @@ Screen {
     height: 10;
     padding: 0 1;
     border: round ansi_bright_black;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
 }
@@ -72,9 +69,32 @@ Screen {
     min-height: 6;
     padding: 0 1;
     border: round ansi_bright_black;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
+}
+
+/* ── モーダルのボタン ───────────── */
+/* 背景を塗らないので、枠でボタンの範囲を示す。
+   配色はパネルと揃える (通常は灰、フォーカス中は青) */
+#edit-buttons Button,
+#confirm-buttons Button,
+#settings-buttons Button,
+#item-buttons Button {
+    border: round ansi_bright_black;
+}
+
+#edit-buttons Button:focus,
+#confirm-buttons Button:focus,
+#settings-buttons Button:focus,
+#item-buttons Button:focus {
+    border: round ansi_blue;
+}
+
+/* 削除は危険な操作なので枠は常に赤のまま
+   (フォーカスは Textual 側の反転表示で分かる) */
+#confirm-buttons #delete,
+#confirm-buttons #delete:focus {
+    border: round ansi_red;
 }
 
 /* ── 追加・編集モーダル ────────── */
@@ -94,7 +114,6 @@ TaskEditScreen {
     overflow-y: auto;
     padding: 1 2;
     border: round ansi_blue;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
 }
@@ -182,7 +201,6 @@ MemoViewScreen, MemoEditScreen {
     height: 100%;
     padding: 0 1;
     border: round ansi_blue;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
     border-subtitle-color: ansi_bright_black;
@@ -218,7 +236,6 @@ ConfirmDeleteScreen {
     height: auto;
     padding: 1 2;
     border: round ansi_red;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
     border-subtitle-color: ansi_bright_black;
@@ -250,7 +267,6 @@ AboutScreen {
     height: auto;
     padding: 1 2;
     border: round ansi_blue;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
     border-subtitle-color: ansi_bright_black;
@@ -274,7 +290,6 @@ SettingsScreen, ItemEditScreen {
     overflow-y: auto;
     padding: 1 2;
     border: round ansi_blue;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
 }
