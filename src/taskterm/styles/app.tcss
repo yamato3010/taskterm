@@ -348,7 +348,6 @@ SettingsScreen, ItemEditScreen {
     height: auto;
     padding: 1 2;
     border: round ansi_blue;
-    background: ansi_black;
     border-title-color: ansi_white;
     border-title-style: bold;
 }
