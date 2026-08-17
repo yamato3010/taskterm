@@ -26,6 +26,9 @@ _PRIORITY_CYCLE = ["high", "mid", "low"]
 # 曜日名 (date.weekday() の 0=月曜 に合わせた並び)
 WEEKDAYS = "月火水木金土日"
 
+# URLのスキーム (https: や msteams: など。無ければ https を補う)
+_URL_SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
+
 # ステータス・タグに使える色 (値, 表示名)
 # 端末のANSI 16色だけを使い、ターミナルの配色設定に追従させる。"" は端末の既定色
 COLORS: list[tuple[str, str]] = [
@@ -134,6 +137,18 @@ def parse_due(text: str, *, today: date | None = None) -> date | None:
         raise ValueError(f"存在しない日付です: {text}") from None
 
 
+def normalize_url(url: str) -> str:
+    """入力されたURLを開ける形にする
+
+    ``example.com/x`` のようにスキームを省いて貼られた場合は ``https://`` を補う。
+    ``msteams:`` のようなアプリのスキームはそのまま通す。
+    """
+    url = url.strip()
+    if url and not _URL_SCHEME.match(url):
+        return f"https://{url}"
+    return url
+
+
 def _name_of(data: dict) -> str:
     """設定項目の名前を取り出す (空なら壊れているとみなす)"""
     name = data.get("name")
@@ -187,6 +202,37 @@ class Tag:
 
 
 @dataclass
+class Link:
+    """タスクに紐づくリンク
+
+    Teams のスレッドや Backlog のチケットなど、そのタスクの背景を辿るための
+    参照先を、それが何かを示すタイトル付きで持つ。
+    """
+
+    title: str
+    url: str
+
+    def label(self) -> str:
+        """一覧に出す表示名 (タイトルが空ならURLで代用する)"""
+        return self.title or self.url
+
+    def to_dict(self) -> dict:
+        return {"title": self.title, "url": self.url}
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Link:
+        """保存された辞書から復元する (URLが無ければ ValueError)"""
+        url = data.get("url")
+        if not isinstance(url, str) or not url.strip():
+            raise ValueError("url が空です")
+        title = data.get("title")
+        return cls(
+            title=title.strip() if isinstance(title, str) else "",
+            url=url.strip(),
+        )
+
+
+@dataclass
 class Task:
     """1件のタスク
 
@@ -200,6 +246,7 @@ class Task:
     memo: str = ""
     status: str = ""  # Status.id (空・未知なら既定ステータス扱い)
     tags: list[str] = field(default_factory=list)  # Tag.id のリスト
+    links: list[Link] = field(default_factory=list)
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     def to_dict(self) -> dict:
@@ -212,6 +259,7 @@ class Task:
             "memo": self.memo,
             "status": self.status,
             "tags": list(self.tags),
+            "links": [link.to_dict() for link in self.links],
         }
 
     @classmethod
@@ -219,7 +267,8 @@ class Task:
         """保存された辞書から復元する
 
         タイトルと期限が壊れている場合だけ ValueError を投げ (呼び出し側でその
-        1件を飛ばす)、優先度など復帰できる項目は既定値に落とす。
+        1件を飛ばす)、優先度など復帰できる項目は既定値に落とす (壊れたリンクは
+        その1件だけ飛ばす)。
         ステータス・タグが今の設定に無い場合の始末は Config 側で行う。
         """
         title = data.get("title")
@@ -236,6 +285,14 @@ class Task:
         raw_tags = data.get("tags")
         tags = [str(t) for t in raw_tags] if isinstance(raw_tags, list) else []
 
+        raw_links = data.get("links")
+        links = []
+        for entry in raw_links if isinstance(raw_links, list) else []:
+            try:
+                links.append(Link.from_dict(entry))
+            except (AttributeError, TypeError, ValueError):
+                continue
+
         return cls(
             title=title,
             due=due,
@@ -243,5 +300,6 @@ class Task:
             memo=str(data.get("memo") or ""),
             status=str(data.get("status") or ""),
             tags=tags,
+            links=links,
             id=str(data.get("id") or uuid.uuid4().hex),
         )

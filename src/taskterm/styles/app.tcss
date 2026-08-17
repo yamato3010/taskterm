@@ -79,14 +79,16 @@ Screen {
 #edit-buttons Button,
 #confirm-buttons Button,
 #settings-buttons Button,
-#item-buttons Button {
+#item-buttons Button,
+#link-buttons Button {
     border: round ansi_bright_black;
 }
 
 #edit-buttons Button:focus,
 #confirm-buttons Button:focus,
 #settings-buttons Button:focus,
-#item-buttons Button:focus {
+#item-buttons Button:focus,
+#link-buttons Button:focus {
     border: round ansi_blue;
 }
 
@@ -135,7 +137,7 @@ TaskEditScreen {
 
 /* 入力欄とプルダウンは枠を省いて高さを詰めている (端末が低くてもフォームが
    収まるように)。代わりに背景で入力欄の範囲を示す */
-#edit-dialog Input, #item-dialog Input,
+#edit-dialog Input, #item-dialog Input, #link-dialog Input,
 #edit-dialog Select > SelectCurrent, #item-dialog Select > SelectCurrent {
     background: ansi_bright_black;
 }
@@ -191,6 +193,16 @@ TaskEditScreen {
     height: 1;
 }
 
+/* フォームのリンク欄も控えだけ (追加・編集は別画面) */
+#links-row {
+    height: 1;
+}
+
+#links-preview {
+    width: 1fr;
+    height: 1;
+}
+
 /* ── メモの全画面表示・編集 ────────── */
 MemoViewScreen, MemoEditScreen {
     background: ansi_default;
@@ -222,6 +234,65 @@ MemoViewScreen, MemoEditScreen {
     height: 1fr;
     margin-top: 1;
     border: none;
+}
+
+/* ── リンクの一覧・編集 ─────────── */
+LinksScreen, LinkEditScreen {
+    align: center middle;
+    background: transparent;
+}
+
+#links-dialog {
+    width: 76;
+    max-width: 96%;
+    height: auto;
+    max-height: 100%;
+    padding: 1 2;
+    border: round ansi_blue;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+    border-subtitle-color: ansi_bright_black;
+}
+
+/* 1件が2行 (タイトル + URL) なので、多いときは縦にスクロールさせる。
+   端末が狭いときに横スクロールバーで1行取られないよう、横は切って出す */
+#links-table {
+    height: auto;
+    max-height: 14;
+    background: ansi_black;
+    overflow-x: hidden;
+}
+
+#links-hint {
+    height: auto;
+    margin-top: 1;
+    color: ansi_bright_black;
+}
+
+/* リンク1件の編集 */
+#link-dialog {
+    width: 62;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round ansi_blue;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+#link-dialog Label {
+    margin-top: 1;
+    color: ansi_bright_black;
+}
+
+#link-buttons {
+    height: auto;
+    margin-top: 1;
+    align-horizontal: right;
+}
+
+#link-buttons Button {
+    margin-left: 2;
 }
 
 /* ── 削除の確認 ─────────────────── */

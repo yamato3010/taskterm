@@ -97,5 +97,8 @@ def _row(task: Task, today: date, config: Config) -> tuple[Text, ...]:
     if task.memo:
         # メモがあることの印 (中身は一覧の下の行に出す)
         title.append(" ✎", style="dim")
+    if task.links:
+        # リンクがあることの印 (o キーで開ける)
+        title.append(" ↗", style="dim")
 
     return status_cell, due, priority, tags, title

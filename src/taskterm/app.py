@@ -18,9 +18,10 @@ from textual.widgets import Footer, Header, Static
 
 from . import storage
 from .config import Config
-from .models import Task, format_due, next_priority, priority_label
+from .models import Link, Task, format_due, next_priority, priority_label
 from .screens.about import AboutScreen
 from .screens.confirm import ConfirmDeleteScreen
+from .screens.links import LinksScreen
 from .screens.memo import MemoViewScreen
 from .screens.settings import SettingsScreen
 from .screens.task_edit import TaskEditScreen
@@ -61,6 +62,7 @@ class TodoApp(App):
         Binding("d", "delete", "削除"),
         Binding("f", "filter_tag", "絞込"),
         Binding("m", "memo", "メモ"),
+        Binding("o", "links", "リンク"),
         Binding("v", "toggle_view", "表示"),
         Binding("comma", "settings", "設定"),
         Binding("question_mark", "show_help_panel", "ヘルプ"),
@@ -374,6 +376,23 @@ class TodoApp(App):
             lambda memo: self._on_memo_edited(task, memo),
         )
 
+    def action_links(self) -> None:
+        """選択中タスクのリンクを開く (一覧から選んでブラウザで開く)"""
+        task = self._selected_task()
+        if task is None:
+            return
+        self.push_screen(
+            LinksScreen(task.title, task.links),
+            lambda links: self._on_links_edited(task, links),
+        )
+
+    def _on_links_edited(self, task: Task, links: Optional[list[Link]]) -> None:
+        """リンク画面で編集された場合だけ保存する (開いただけなら None が来る)"""
+        if links is None:
+            return
+        task.links = links
+        self._save()
+
     def _task_meta(self, task: Task) -> str:
         """詳細欄とメモ画面の見出しに出すタスクの概要
 
@@ -386,6 +405,8 @@ class TodoApp(App):
         if task.due:
             parts.append(format_due(task.due))
         parts.append(f"優先度 {priority_label(task.priority)}")
+        if task.links:
+            parts.append(f"リンク {len(task.links)}件 (o で開く)")
         return "   ".join(parts)
 
     def _on_memo_edited(self, task: Task, memo: Optional[str]) -> None:

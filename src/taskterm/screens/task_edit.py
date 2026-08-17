@@ -15,7 +15,8 @@ from textual.widgets import Button, Input, Label, Select, SelectionList, Static
 from textual.widgets.selection_list import Selection
 
 from ..config import Config
-from ..models import DEFAULT_PRIORITY, PRIORITIES, Task, parse_due, textual_color
+from ..models import DEFAULT_PRIORITY, PRIORITIES, Link, Task, parse_due, textual_color
+from .links import LinksScreen
 from .memo import MemoEditScreen
 
 
@@ -32,6 +33,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         Binding("escape", "cancel", "取消"),
         Binding("ctrl+s", "save", "保存"),
         Binding("ctrl+o", "edit_memo", "メモを編集"),
+        Binding("ctrl+l", "edit_links", "リンクを編集"),
     ]
 
     def __init__(
@@ -46,8 +48,9 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         self._target = task
         # 追加のときは、カレンダーで選んでいる日を期限の初期値にする
         self._due = task.due if task else default_due
-        # メモは別画面で編集するため、保存までここで持つ
+        # メモとリンクは別画面で編集するため、保存までここで持つ
         self._memo = task.memo if task else ""
+        self._links = [Link(link.title, link.url) for link in task.links] if task else []
 
     def compose(self) -> ComposeResult:
         task = self._target
@@ -117,12 +120,18 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
                 yield Static(id="memo-preview")
                 yield Button("編集 (^O)", compact=True, id="edit-memo")
 
+            yield Label("リンク (Teams・Backlog など。Ctrl+L で追加・編集)")
+            with Horizontal(id="links-row"):
+                yield Static(id="links-preview")
+                yield Button("編集 (^L)", compact=True, id="edit-links")
+
             with Horizontal(id="edit-buttons"):
                 yield Button("保存", variant="primary", compact=True, id="save")
                 yield Button("取消", compact=True, id="cancel")
 
     def on_mount(self) -> None:
         self._show_memo_preview()
+        self._show_links_preview()
         self.query_one("#title", Input).focus()
 
     def on_input_submitted(self) -> None:
@@ -134,6 +143,8 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
             self._save()
         elif event.button.id == "edit-memo":
             self.action_edit_memo()
+        elif event.button.id == "edit-links":
+            self.action_edit_links()
         else:
             self.dismiss(None)
 
@@ -145,8 +156,21 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
 
     def action_edit_memo(self) -> None:
         """メモを全画面で編集する"""
-        title = self.query_one("#title", Input).value.strip() or "タスク"
-        self.app.push_screen(MemoEditScreen(title, self._memo), self._on_memo_edited)
+        self.app.push_screen(MemoEditScreen(self._form_title(), self._memo), self._on_memo_edited)
+
+    def action_edit_links(self) -> None:
+        """リンクを別画面で追加・編集する"""
+        self.app.push_screen(LinksScreen(self._form_title(), self._links), self._on_links_edited)
+
+    def _form_title(self) -> str:
+        """別画面の見出しに使う、いま入力されているタイトル"""
+        return self.query_one("#title", Input).value.strip() or "タスク"
+
+    def _on_links_edited(self, links: Optional[list[Link]]) -> None:
+        """編集から戻ったら控えを更新する (保存はフォームの保存時)"""
+        if links is not None:
+            self._links = links
+            self._show_links_preview()
 
     def _on_memo_edited(self, memo: Optional[str]) -> None:
         """編集から戻ったら控えを更新する (保存はフォームの保存時)"""
@@ -164,6 +188,17 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         text = Text(lines[0], no_wrap=True, overflow="ellipsis")
         if len(lines) > 1:
             text.append(f"  … 全{len(lines)}行", style="dim")
+        preview.update(text)
+
+    def _show_links_preview(self) -> None:
+        """リンクの1件目と件数だけをフォームに出す"""
+        preview = self.query_one("#links-preview", Static)
+        if not self._links:
+            preview.update(Text("(なし)", style="dim"))
+            return
+        text = Text(self._links[0].label(), no_wrap=True, overflow="ellipsis")
+        if len(self._links) > 1:
+            text.append(f"  … 全{len(self._links)}件", style="dim")
         preview.update(text)
 
     def _selected_tags(self) -> list[str]:
@@ -193,6 +228,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         status = str(self.query_one("#status", Select).value)
         tags = self._selected_tags()
         memo = self._memo
+        links = self._links
 
         task = self._target
         if task is None:
@@ -204,6 +240,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
                     memo=memo,
                     status=status,
                     tags=tags,
+                    links=links,
                 )
             )
             return
@@ -214,4 +251,5 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         task.memo = memo
         task.status = status
         task.tags = tags
+        task.links = links
         self.dismiss(task)
