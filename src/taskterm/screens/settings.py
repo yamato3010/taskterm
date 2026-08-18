@@ -167,6 +167,22 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
                     tag_panel.border_title = "タグ"
                     yield ItemTable(id="tag-table")
 
+            with Horizontal(id="settings-quarter"):
+                yield Checkbox(
+                    "四半期を表示",
+                    value=self._config.show_quarter,
+                    compact=True,
+                    id="quarter-show",
+                )
+                yield Label("年度の開始月")
+                yield Select(
+                    [(f"{month}月", month) for month in range(1, 13)],
+                    value=self._config.fiscal_start_month,
+                    allow_blank=False,
+                    compact=True,
+                    id="quarter-start",
+                )
+
             yield Static(
                 "a 追加  e 編集  d 削除  J/K 並べ替え  Tab 切替  Ctrl+S 保存",
                 id="settings-hint",
@@ -319,4 +335,6 @@ class SettingsScreen(ModalScreen[Optional[Config]]):
         self.dismiss(None)
 
     def action_save(self) -> None:
+        self._config.show_quarter = self.query_one("#quarter-show", Checkbox).value
+        self._config.fiscal_start_month = int(self.query_one("#quarter-start", Select).value)
         self.dismiss(self._config)

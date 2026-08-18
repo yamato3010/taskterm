@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-from .models import Status, Tag, Task, new_id, priority_rank
+from .models import FISCAL_START_MONTH, Status, Tag, Task, new_id, priority_rank
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +53,8 @@ class Config:
     statuses: list[Status] = field(default_factory=default_statuses)
     tags: list[Tag] = field(default_factory=list)
     show_all: bool = False  # 一覧の表示範囲 (False: 選択日のみ / True: 全件)
+    show_quarter: bool = False  # 四半期パネルを出すか
+    fiscal_start_month: int = FISCAL_START_MONTH  # 年度の開始月 (1〜12)
 
     # ── ステータス・タグの参照 ────────────────
 
@@ -154,6 +156,8 @@ class Config:
             statuses=_dedupe_ids(statuses),
             tags=_dedupe_ids(tags),
             show_all=bool(data.get("show_all", False)),
+            show_quarter=bool(data.get("show_quarter", False)),
+            fiscal_start_month=_valid_month(data.get("fiscal_start_month")),
         )
 
     def save(self) -> None:
@@ -167,6 +171,8 @@ class Config:
                     "statuses": [s.to_dict() for s in self.statuses],
                     "tags": [t.to_dict() for t in self.tags],
                     "show_all": self.show_all,
+                    "show_quarter": self.show_quarter,
+                    "fiscal_start_month": self.fiscal_start_month,
                 },
                 f,
                 ensure_ascii=False,
@@ -187,6 +193,11 @@ def _load_items(raw: object, item_class: type) -> list:
         except (AttributeError, KeyError, TypeError, ValueError) as e:
             log.warning("読み込めない設定項目を飛ばします (%r): %s", entry, e)
     return items
+
+
+def _valid_month(raw: object) -> int:
+    """年度の開始月 (1〜12でなければ既定に落とす)"""
+    return raw if isinstance(raw, int) and 1 <= raw <= 12 else FISCAL_START_MONTH
 
 
 def _dedupe_ids(items: list) -> list:

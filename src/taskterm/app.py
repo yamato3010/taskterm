@@ -18,7 +18,7 @@ from textual.widgets import Footer, Header, Static
 
 from . import storage
 from .config import Config
-from .models import Link, Task, format_due, next_priority, priority_label
+from .models import Link, Quarter, Task, format_due, next_priority, priority_label, quarter_of
 from .screens.about import AboutScreen
 from .screens.confirm import ConfirmDeleteScreen
 from .screens.links import LinksScreen
@@ -39,6 +39,31 @@ def _overflows(memo: str, pane: Widget) -> bool:
     wrapped = sum(max(1, -(-cell_len(line) // width)) for line in memo.splitlines())
     # 1行目はタスクの概要に使うため、メモに使えるのは残りの行
     return wrapped > height - 1
+
+
+# 四半期の進捗バーの長さ (右パネルの幅27桁に「 100%」を足しても収まる長さ)
+_BAR_WIDTH = 21
+
+
+def _quarter_text(quarter: Quarter, today: date) -> Text:
+    """四半期パネルの中身 (年度と期間 / 進捗バー / 終了までの日数 の3行)"""
+    remaining = quarter.remaining(today)
+    ratio = (quarter.days - remaining) / quarter.days
+    # 切り上げると最終日より前に満タンに見えてしまうので切り捨てる
+    filled = int(_BAR_WIDTH * ratio)
+
+    text = Text(no_wrap=True)
+    text.append(f"{quarter.fiscal_year}年度 {quarter.number}Q", style="bold")
+    start, end = quarter.start, quarter.end
+    text.append(f"  {start.month}/{start.day} – {end.month}/{end.day}\n", style="dim")
+
+    text.append("█" * filled, style="cyan")
+    text.append("░" * (_BAR_WIDTH - filled), style="bright_black")
+    text.append(f" {round(ratio * 100):>3}%\n")
+
+    text.append(f"終了まで {remaining}日 (全 {quarter.days}日)", style="dim")
+    return text
+
 
 CSS_PATH = Path(__file__).parent / "styles" / "app.tcss"
 
@@ -106,6 +131,10 @@ class TodoApp(App):
                     calendar_panel.border_title = "カレンダー"
                     calendar_panel.border_subtitle = "• 未完了 · 完了"
                     yield MonthCalendar(id="calendar")
+                # 設定でオンのときだけ出す (既定はオフ)
+                with Container(id="quarter-panel") as quarter_panel:
+                    quarter_panel.border_title = "四半期"
+                    yield Static("", id="quarter")
                 with Container(id="summary-panel") as summary_panel:
                     summary_panel.border_title = "内訳"
                     yield Static("", id="summary")
@@ -142,6 +171,7 @@ class TodoApp(App):
         self.query_one("#task-table", TaskTable).update_tasks(visible, today, self._config)
         self.query_one("#calendar", MonthCalendar).set_marks(self._marks())
         self._update_title(visible)
+        self._update_quarter(today)
         self._update_summary(today)
         self._update_memo()
 
@@ -195,6 +225,18 @@ class TodoApp(App):
         self.query_one("#task-panel").border_title = (
             f"TODO — {scope}  {len(visible)}件 (完了 {done})"
         )
+
+    def _update_quarter(self, today: date) -> None:
+        """四半期パネルを更新する (設定でオフなら枠ごと隠す)
+
+        「今が何Qか」を知るためのものなので、カレンダーの選択日ではなく今日を見る。
+        """
+        panel = self.query_one("#quarter-panel")
+        panel.display = self._config.show_quarter
+        if not self._config.show_quarter:
+            return
+        quarter = quarter_of(today, self._config.fiscal_start_month)
+        self.query_one("#quarter", Static).update(_quarter_text(quarter, today))
 
     def _update_summary(self, today: date) -> None:
         """右下の内訳を更新する"""

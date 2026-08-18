@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 
 # 優先度: キー -> (表示名, Richのスタイル)
 # 色は端末のANSIパレットに追従する色名 (red/yellow/blue) を使う
@@ -25,6 +25,9 @@ _PRIORITY_CYCLE = ["high", "mid", "low"]
 
 # 曜日名 (date.weekday() の 0=月曜 に合わせた並び)
 WEEKDAYS = "月火水木金土日"
+
+# 年度の開始月の既定 (4月始まり = 1Q が4〜6月)
+FISCAL_START_MONTH = 4
 
 # URLのスキーム (https: や msteams: など。無ければ https を補う)
 _URL_SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
@@ -135,6 +138,40 @@ def parse_due(text: str, *, today: date | None = None) -> date | None:
         return date(*numbers)
     except ValueError:
         raise ValueError(f"存在しない日付です: {text}") from None
+
+
+@dataclass(frozen=True)
+class Quarter:
+    """年度の開始月を起点に数えた四半期"""
+
+    fiscal_year: int  # 年度 (開始月を含むほうの暦年)
+    number: int  # 1〜4
+    start: date
+    end: date
+
+    @property
+    def days(self) -> int:
+        """四半期の日数"""
+        return (self.end - self.start).days + 1
+
+    def remaining(self, day: date) -> int:
+        """その日から終了までの残り日数 (その日は含まない。最終日なら0)"""
+        return (self.end - day).days
+
+
+def quarter_of(day: date, start_month: int) -> Quarter:
+    """その日が属する四半期 (``start_month`` を年度の開始月として数える)"""
+    number = ((day.month - start_month) % 12) // 3 + 1
+    # 開始月より前の月は前の年度に属する
+    fiscal_year = day.year - (1 if day.month < start_month else 0)
+    start = _add_months(date(fiscal_year, start_month, 1), (number - 1) * 3)
+    return Quarter(fiscal_year, number, start, _add_months(start, 3) - timedelta(days=1))
+
+
+def _add_months(first_day: date, months: int) -> date:
+    """月初の日付を月単位で進める"""
+    year, month = divmod(first_day.year * 12 + first_day.month - 1 + months, 12)
+    return date(year, month + 1, 1)
 
 
 def normalize_url(url: str) -> str:

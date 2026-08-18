@@ -64,6 +64,15 @@ Screen {
     border-title-style: bold;
 }
 
+/* 四半期 (年度と期間 / 進捗バー / 終了までの日数 の3行。設定でオンのときだけ出す) */
+#quarter-panel {
+    height: 5;
+    padding: 0 1;
+    border: round ansi_bright_black;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
 #summary-panel {
     height: 1fr;
     min-height: 6;
@@ -138,14 +147,16 @@ TaskEditScreen {
 /* 入力欄とプルダウンは枠を省いて高さを詰めている (端末が低くてもフォームが
    収まるように)。代わりに背景で入力欄の範囲を示す */
 #edit-dialog Input, #item-dialog Input, #link-dialog Input,
-#edit-dialog Select > SelectCurrent, #item-dialog Select > SelectCurrent {
+#edit-dialog Select > SelectCurrent, #item-dialog Select > SelectCurrent,
+#settings-quarter Select > SelectCurrent {
     background: ansi_bright_black;
 }
 
 /* Select は枠線でしかフォーカスを示さない作りなので、枠を消すと変化が無くなる。
    開いたときの選択行と同じ配色 (block-cursor) で塗って分かるようにする。
    Input は Textual 側にフォーカス時の配色があるのでそれに任せる */
-#edit-dialog Select:focus > SelectCurrent, #item-dialog Select:focus > SelectCurrent {
+#edit-dialog Select:focus > SelectCurrent, #item-dialog Select:focus > SelectCurrent,
+#settings-quarter Select:focus > SelectCurrent {
     background: $block-cursor-background;
     color: $block-cursor-foreground;
 }
@@ -153,8 +164,10 @@ TaskEditScreen {
 /* SelectCurrent の中身は自前の色を持っているので、フォーカス時はまとめて上書きする */
 #edit-dialog Select:focus > SelectCurrent Static#label,
 #item-dialog Select:focus > SelectCurrent Static#label,
+#settings-quarter Select:focus > SelectCurrent Static#label,
 #edit-dialog Select:focus > SelectCurrent .arrow,
-#item-dialog Select:focus > SelectCurrent .arrow {
+#item-dialog Select:focus > SelectCurrent .arrow,
+#settings-quarter Select:focus > SelectCurrent .arrow {
     color: $block-cursor-foreground;
 }
 
@@ -394,6 +407,27 @@ SettingsScreen, ItemEditScreen {
 #status-table, #tag-table {
     height: 1fr;
     background: ansi_black;
+}
+
+/* 四半期の表示切替と年度の開始月 (チェックボックスと選択欄を1行に並べる) */
+#settings-quarter {
+    height: auto;
+    margin-top: 1;
+}
+
+#settings-quarter Checkbox {
+    width: auto;
+}
+
+#settings-quarter Label {
+    width: auto;
+    margin: 0 1 0 3;
+    color: ansi_bright_black;
+}
+
+#settings-quarter Select {
+    /* 「12月 ▼」がちょうど収まる幅 */
+    width: 8;
 }
 
 #settings-hint, #settings-note {
