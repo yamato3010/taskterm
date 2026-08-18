@@ -27,13 +27,13 @@ class MemoScroll(VerticalScroll):
 class MemoEditScreen(ModalScreen[Optional[str]]):
     """メモを全画面で編集する
 
-    保存すると本文を、取り消すと None を返す。Enter は改行なので、保存は
-    Ctrl+S で行う。
+    Enter は改行なので、閉じたときに自動保存する。本文を書き換えていれば
+    その本文を、変えていなければ None を返す。
     """
 
     BINDINGS = [
-        Binding("escape", "cancel", "取消"),
-        Binding("ctrl+s", "save", "保存"),
+        Binding("escape", "save", "保存して閉じる"),
+        Binding("ctrl+s", "save", "保存して閉じる"),
     ]
 
     def __init__(self, title: str, memo: str) -> None:
@@ -44,7 +44,7 @@ class MemoEditScreen(ModalScreen[Optional[str]]):
     def compose(self) -> ComposeResult:
         with Vertical(id="memo-dialog") as dialog:
             dialog.border_title = "メモを編集"
-            dialog.border_subtitle = "Ctrl+S 保存   Esc 取消"
+            dialog.border_subtitle = "Esc 保存して閉じる   Ctrl+Z 取り消し"
             yield Static(Text(self._title, style="bold"), id="memo-header")
             yield TextArea(
                 self._memo,
@@ -59,11 +59,10 @@ class MemoEditScreen(ModalScreen[Optional[str]]):
         # 続きを書き足すことが多いので末尾から始める
         editor.move_cursor(editor.document.end)
 
-    def action_cancel(self) -> None:
-        self.dismiss(None)
-
     def action_save(self) -> None:
-        self.dismiss(self.query_one("#memo-editor", TextArea).text.strip())
+        memo = self.query_one("#memo-editor", TextArea).text.strip()
+        # 読むだけで閉じたときに保存が走らないよう、変えていなければ None を返す
+        self.dismiss(memo if memo != self._memo else None)
 
 
 class MemoViewScreen(ModalScreen[Optional[str]]):
