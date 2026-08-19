@@ -18,12 +18,23 @@ from textual.widgets import Footer, Header, Static
 
 from . import storage
 from .config import Config
-from .models import Link, Quarter, Task, format_due, next_priority, priority_label, quarter_of
+from .models import (
+    Link,
+    Quarter,
+    Subtask,
+    Task,
+    format_due,
+    next_priority,
+    priority_label,
+    quarter_of,
+    subtask_progress,
+)
 from .screens.about import AboutScreen
 from .screens.confirm import ConfirmDeleteScreen
 from .screens.links import LinksScreen
 from .screens.memo import MemoViewScreen
 from .screens.settings import SettingsScreen
+from .screens.subtasks import SubtasksScreen
 from .screens.task_edit import TaskEditScreen
 from .widgets.calendar import MonthCalendar
 from .widgets.task_list import TaskTable
@@ -88,6 +99,7 @@ class TodoApp(App):
         Binding("f", "filter_tag", "絞込"),
         Binding("m", "memo", "メモ"),
         Binding("o", "links", "リンク"),
+        Binding("c", "subtasks", "チェック"),
         Binding("v", "toggle_view", "表示"),
         Binding("comma", "settings", "設定"),
         Binding("question_mark", "show_help_panel", "ヘルプ"),
@@ -435,6 +447,23 @@ class TodoApp(App):
         task.links = links
         self._save()
 
+    def action_subtasks(self) -> None:
+        """選択中タスクのチェックリストを開く (そこで追加・完了もできる)"""
+        task = self._selected_task()
+        if task is None:
+            return
+        self.push_screen(
+            SubtasksScreen(task.title, task.subtasks),
+            lambda subtasks: self._on_subtasks_edited(task, subtasks),
+        )
+
+    def _on_subtasks_edited(self, task: Task, subtasks: Optional[list[Subtask]]) -> None:
+        """チェックリスト画面で編集された場合だけ保存する (見ただけなら None が来る)"""
+        if subtasks is None:
+            return
+        task.subtasks = subtasks
+        self._save()
+
     def _task_meta(self, task: Task) -> str:
         """詳細欄とメモ画面の見出しに出すタスクの概要
 
@@ -447,6 +476,9 @@ class TodoApp(App):
         if task.due:
             parts.append(format_due(task.due))
         parts.append(f"優先度 {priority_label(task.priority)}")
+        if task.subtasks:
+            checked, total = subtask_progress(task.subtasks)
+            parts.append(f"チェック {checked}/{total}")
         if task.links:
             parts.append(f"リンク {len(task.links)}件 (o で開く)")
         return "   ".join(parts)

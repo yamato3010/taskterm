@@ -15,9 +15,19 @@ from textual.widgets import Button, Input, Label, Select, SelectionList, Static
 from textual.widgets.selection_list import Selection
 
 from ..config import Config
-from ..models import DEFAULT_PRIORITY, PRIORITIES, Link, Task, parse_due, textual_color
+from ..models import (
+    DEFAULT_PRIORITY,
+    PRIORITIES,
+    Link,
+    Subtask,
+    Task,
+    parse_due,
+    subtask_progress,
+    textual_color,
+)
 from .links import LinksScreen
 from .memo import MemoEditScreen
+from .subtasks import SubtasksScreen
 
 
 class TaskEditScreen(ModalScreen[Optional[Task]]):
@@ -34,6 +44,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         Binding("ctrl+s", "save", "保存"),
         Binding("ctrl+o", "edit_memo", "メモを編集"),
         Binding("ctrl+l", "edit_links", "リンクを編集"),
+        Binding("ctrl+t", "edit_subtasks", "チェックリストを編集"),
     ]
 
     def __init__(
@@ -48,9 +59,12 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         self._target = task
         # 追加のときは、カレンダーで選んでいる日を期限の初期値にする
         self._due = task.due if task else default_due
-        # メモとリンクは別画面で編集するため、保存までここで持つ
+        # メモ・リンク・チェックリストは別画面で編集するため、保存までここで持つ
         self._memo = task.memo if task else ""
         self._links = [Link(link.title, link.url) for link in task.links] if task else []
+        self._subtasks = (
+            [Subtask(item.title, item.done) for item in task.subtasks] if task else []
+        )
 
     def compose(self) -> ComposeResult:
         task = self._target
@@ -125,6 +139,11 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
                 yield Static(id="links-preview")
                 yield Button("編集 (^L)", compact=True, id="edit-links")
 
+            yield Label("チェックリスト (Ctrl+T で追加・完了)")
+            with Horizontal(id="subtasks-row"):
+                yield Static(id="subtasks-preview")
+                yield Button("編集 (^T)", compact=True, id="edit-subtasks")
+
             with Horizontal(id="edit-buttons"):
                 yield Button("保存", variant="primary", compact=True, id="save")
                 yield Button("取消", compact=True, id="cancel")
@@ -132,6 +151,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
     def on_mount(self) -> None:
         self._show_memo_preview()
         self._show_links_preview()
+        self._show_subtasks_preview()
         self.query_one("#title", Input).focus()
 
     def on_input_submitted(self) -> None:
@@ -145,6 +165,8 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
             self.action_edit_memo()
         elif event.button.id == "edit-links":
             self.action_edit_links()
+        elif event.button.id == "edit-subtasks":
+            self.action_edit_subtasks()
         else:
             self.dismiss(None)
 
@@ -162,6 +184,12 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         """リンクを別画面で追加・編集する"""
         self.app.push_screen(LinksScreen(self._form_title(), self._links), self._on_links_edited)
 
+    def action_edit_subtasks(self) -> None:
+        """チェックリストを別画面で追加・編集する"""
+        self.app.push_screen(
+            SubtasksScreen(self._form_title(), self._subtasks), self._on_subtasks_edited
+        )
+
     def _form_title(self) -> str:
         """別画面の見出しに使う、いま入力されているタイトル"""
         return self.query_one("#title", Input).value.strip() or "タスク"
@@ -171,6 +199,12 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         if links is not None:
             self._links = links
             self._show_links_preview()
+
+    def _on_subtasks_edited(self, subtasks: Optional[list[Subtask]]) -> None:
+        """編集から戻ったら控えを更新する (保存はフォームの保存時)"""
+        if subtasks is not None:
+            self._subtasks = subtasks
+            self._show_subtasks_preview()
 
     def _on_memo_edited(self, memo: Optional[str]) -> None:
         """編集から戻ったら控えを更新する (保存はフォームの保存時)"""
@@ -201,6 +235,19 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
             text.append(f"  … 全{len(self._links)}件", style="dim")
         preview.update(text)
 
+    def _show_subtasks_preview(self) -> None:
+        """チェックリストの進み具合と先頭の項目だけをフォームに出す"""
+        preview = self.query_one("#subtasks-preview", Static)
+        if not self._subtasks:
+            preview.update(Text("(なし)", style="dim"))
+            return
+        checked, total = subtask_progress(self._subtasks)
+        text = Text(f"{checked}/{total}  ", style="dim")
+        text.append(Text(self._subtasks[0].title, no_wrap=True, overflow="ellipsis"))
+        if total > 1:
+            text.append(f"  … 全{total}件", style="dim")
+        preview.update(text)
+
     def _selected_tags(self) -> list[str]:
         """選択されているタグのID (設定の並び順で返す)"""
         if not self._config.tags:
@@ -229,6 +276,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         tags = self._selected_tags()
         memo = self._memo
         links = self._links
+        subtasks = self._subtasks
 
         task = self._target
         if task is None:
@@ -241,6 +289,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
                     status=status,
                     tags=tags,
                     links=links,
+                    subtasks=subtasks,
                 )
             )
             return
@@ -252,4 +301,5 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         task.status = status
         task.tags = tags
         task.links = links
+        task.subtasks = subtasks
         self.dismiss(task)

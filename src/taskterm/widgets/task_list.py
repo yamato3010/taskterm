@@ -9,7 +9,7 @@ from textual.binding import Binding
 from textual.widgets import DataTable
 
 from ..config import Config
-from ..models import Task, format_due, priority_label, priority_style
+from ..models import Task, format_due, priority_label, priority_style, subtask_progress
 
 # 列幅 (タイトルは長さが読めないので最後に置き、残りの幅を与える)
 _STATUS_WIDTH = 10
@@ -100,5 +100,9 @@ def _row(task: Task, today: date, config: Config) -> tuple[Text, ...]:
     if task.links:
         # リンクがあることの印 (o キーで開ける)
         title.append(" ↗", style="dim")
+    if task.subtasks:
+        # チェックリストの進み具合 (中身は c キーで開ける)
+        checked, total = subtask_progress(task.subtasks)
+        title.append(f" {checked}/{total}", style="dim")
 
     return status_cell, due, priority, tags, title

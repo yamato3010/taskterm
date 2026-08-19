@@ -270,6 +270,34 @@ class Link:
 
 
 @dataclass
+class Subtask:
+    """タスクを分解したチェックリストの1項目
+
+    期限・ステータス・優先度は持たない (1つの作業の手順を並べるためのもの)。
+    個別に日付で管理したくなった項目は、独立したタスクにする。
+    """
+
+    title: str
+    done: bool = False
+
+    def to_dict(self) -> dict:
+        return {"title": self.title, "done": self.done}
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Subtask:
+        """保存された辞書から復元する (タイトルが無ければ ValueError)"""
+        title = data.get("title")
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError("title が空です")
+        return cls(title=title.strip(), done=bool(data.get("done", False)))
+
+
+def subtask_progress(subtasks: list[Subtask]) -> tuple[int, int]:
+    """チェックリストの (完了数, 総数)"""
+    return sum(1 for s in subtasks if s.done), len(subtasks)
+
+
+@dataclass
 class Task:
     """1件のタスク
 
@@ -284,6 +312,7 @@ class Task:
     status: str = ""  # Status.id (空・未知なら既定ステータス扱い)
     tags: list[str] = field(default_factory=list)  # Tag.id のリスト
     links: list[Link] = field(default_factory=list)
+    subtasks: list[Subtask] = field(default_factory=list)
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     def to_dict(self) -> dict:
@@ -297,6 +326,7 @@ class Task:
             "status": self.status,
             "tags": list(self.tags),
             "links": [link.to_dict() for link in self.links],
+            "subtasks": [item.to_dict() for item in self.subtasks],
         }
 
     @classmethod
@@ -304,8 +334,8 @@ class Task:
         """保存された辞書から復元する
 
         タイトルと期限が壊れている場合だけ ValueError を投げ (呼び出し側でその
-        1件を飛ばす)、優先度など復帰できる項目は既定値に落とす (壊れたリンクは
-        その1件だけ飛ばす)。
+        1件を飛ばす)、優先度など復帰できる項目は既定値に落とす (壊れたリンク・
+        チェックリストの項目はその1件だけ飛ばす)。
         ステータス・タグが今の設定に無い場合の始末は Config 側で行う。
         """
         title = data.get("title")
@@ -330,6 +360,14 @@ class Task:
             except (AttributeError, TypeError, ValueError):
                 continue
 
+        raw_subtasks = data.get("subtasks")
+        subtasks = []
+        for entry in raw_subtasks if isinstance(raw_subtasks, list) else []:
+            try:
+                subtasks.append(Subtask.from_dict(entry))
+            except (AttributeError, TypeError, ValueError):
+                continue
+
         return cls(
             title=title,
             due=due,
@@ -338,5 +376,6 @@ class Task:
             status=str(data.get("status") or ""),
             tags=tags,
             links=links,
+            subtasks=subtasks,
             id=str(data.get("id") or uuid.uuid4().hex),
         )

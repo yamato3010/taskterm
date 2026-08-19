@@ -146,7 +146,7 @@ TaskEditScreen {
 
 /* 入力欄とプルダウンは枠を省いて高さを詰めている (端末が低くてもフォームが
    収まるように)。代わりに背景で入力欄の範囲を示す */
-#edit-dialog Input, #item-dialog Input, #link-dialog Input,
+#edit-dialog Input, #item-dialog Input, #link-dialog Input, #subtasks-dialog Input,
 #edit-dialog Select > SelectCurrent, #item-dialog Select > SelectCurrent,
 #settings-quarter Select > SelectCurrent {
     background: ansi_bright_black;
@@ -212,6 +212,16 @@ TaskEditScreen {
 }
 
 #links-preview {
+    width: 1fr;
+    height: 1;
+}
+
+/* フォームのチェックリスト欄も控えだけ (追加・完了は別画面) */
+#subtasks-row {
+    height: 1;
+}
+
+#subtasks-preview {
     width: 1fr;
     height: 1;
 }
@@ -306,6 +316,48 @@ LinksScreen, LinkEditScreen {
 
 #link-buttons Button {
     margin-left: 2;
+}
+
+/* ── チェックリストの一覧・編集 ───── */
+SubtasksScreen {
+    align: center middle;
+    background: transparent;
+}
+
+#subtasks-dialog {
+    width: 62;
+    max-width: 90%;
+    height: auto;
+    max-height: 100%;
+    padding: 1 2;
+    border: round ansi_blue;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+    border-subtitle-color: ansi_bright_black;
+}
+
+#subtasks-progress {
+    height: 1;
+    margin-bottom: 1;
+}
+
+/* 1件1行。多いときは縦にスクロールさせる (横は切って出し、横スクロールバーで
+   1行取られないようにする) */
+#subtasks-table {
+    height: auto;
+    max-height: 12;
+    background: ansi_black;
+    overflow-x: hidden;
+}
+
+#subtasks-input {
+    margin-top: 1;
+}
+
+#subtasks-hint {
+    height: auto;
+    margin-top: 1;
+    color: ansi_bright_black;
 }
 
 /* ── 削除の確認 ─────────────────── */
