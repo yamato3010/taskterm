@@ -259,6 +259,91 @@ MemoViewScreen, MemoEditScreen {
     border: none;
 }
 
+/* メモ本文の markdown 表示。
+   端末のANSIパレットに合わせ、見出し・強調・表の枠だけを色で付ける
+   (Textual 既定の背景付き見出しは端末の配色から浮くため上書きする)。 */
+#memo-text {
+    padding: 0;
+}
+
+/* メモが無いときの案内文 */
+#memo-text.empty {
+    color: ansi_bright_black;
+}
+
+#memo-text MarkdownH1,
+#memo-text MarkdownH2,
+#memo-text MarkdownH3,
+#memo-text MarkdownH4,
+#memo-text MarkdownH5,
+#memo-text MarkdownH6 {
+    background: ansi_default;
+    text-style: bold;
+    content-align: left middle;
+    width: 1fr;
+    margin: 1 0 0 0;
+    padding: 0;
+}
+
+#memo-text MarkdownH1 {
+    color: ansi_bright_blue;
+}
+
+#memo-text MarkdownH2 {
+    color: ansi_bright_cyan;
+}
+
+#memo-text MarkdownH3,
+#memo-text MarkdownH4,
+#memo-text MarkdownH5,
+#memo-text MarkdownH6 {
+    color: ansi_cyan;
+}
+
+/* 太字・斜体・インラインコードは色で見分ける (端末が斜体を描けないため) */
+#memo-text MarkdownBlock > .strong {
+    color: ansi_yellow;
+    text-style: bold;
+}
+
+#memo-text MarkdownBlock > .em {
+    color: ansi_bright_white;
+    text-style: italic;
+}
+
+#memo-text MarkdownBlock > .code_inline {
+    color: ansi_magenta;
+}
+
+#memo-text MarkdownBullet {
+    color: ansi_blue;
+}
+
+#memo-text MarkdownBlockQuote {
+    background: ansi_default;
+    border-left: outer ansi_bright_black;
+    margin: 0 0 1 0;
+}
+
+#memo-text MarkdownFence {
+    border-left: outer ansi_bright_black;
+    margin: 0 0 1 0;
+    padding: 0 1;
+}
+
+#memo-text MarkdownHorizontalRule {
+    border-bottom: solid ansi_bright_black;
+}
+
+/* 表は罫線 (keyline) で枠を描く */
+#memo-text MarkdownTableContent {
+    keyline: thin ansi_bright_black;
+}
+
+#memo-text MarkdownTableContent > .header {
+    color: ansi_blue;
+}
+
 /* ── リンクの一覧・編集 ─────────── */
 LinksScreen, LinkEditScreen {
     align: center middle;

@@ -1,18 +1,45 @@
 """メモの表示・編集 (全画面)
 
 メモは複数行で長くなるため、一覧の下のメモ欄には収まらない分を全画面で扱う。
+表示は markdown として描く (書くのは素のテキストエディタのまま)。
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
+from markdown_it import MarkdownIt
+from markdown_it.rules_core import StateCore
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Static, TextArea
+from textual.widgets import Markdown, Static, TextArea
+
+
+def _hard_break(state: StateCore) -> None:
+    """段落中の改行 (softbreak) を、そのまま改行する扱い (hardbreak) に変える"""
+    for token in state.tokens:
+        if token.type == "inline" and token.children:
+            for child in token.children:
+                if child.type == "softbreak":
+                    child.type = "hardbreak"
+
+
+def _markdown_parser() -> MarkdownIt:
+    """メモ用の markdown パーサ
+
+    markdown 本来の規則では単独の改行はつながってしまうが、markdown を意識せず
+    書いた今までのメモが1つの段落にまとめられて読めなくなるため、改行は
+    そのまま改行として描く。
+
+    HTML は解釈しない (html=False)。`<確認>` のような書き方をタグと見なして
+    消してしまうと、書いたはずのメモが読めなくなるため。
+    """
+    parser = MarkdownIt("gfm-like", {"html": False})
+    parser.core.ruler.push("taskterm_hard_break", _hard_break)
+    return parser
 
 
 class MemoScroll(VerticalScroll):
@@ -94,18 +121,17 @@ class MemoViewScreen(ModalScreen[Optional[str]]):
             yield Static(header, id="memo-header")
 
             with MemoScroll(id="memo-body"):
-                yield Static(id="memo-text")
+                yield Markdown(parser_factory=_markdown_parser, id="memo-text")
 
     def on_mount(self) -> None:
         self._show_memo()
         self.query_one("#memo-body", MemoScroll).focus()
 
     def _show_memo(self) -> None:
-        body = self.query_one("#memo-text", Static)
-        if self._memo:
-            body.update(Text(self._memo))
-        else:
-            body.update(Text("(メモなし) — e で書けます", style="dim"))
+        body = self.query_one("#memo-text", Markdown)
+        # 案内文は本文と見分けが付くように薄くする (色は tcss 側)
+        body.set_class(not self._memo, "empty")
+        body.update(self._memo or "(メモなし) — e で書けます")
 
     def action_edit(self) -> None:
         self.app.push_screen(MemoEditScreen(self._title, self._memo), self._on_edited)
