@@ -186,6 +186,30 @@ def normalize_url(url: str) -> str:
     return url
 
 
+def memo_heading(day: date) -> str:
+    """メモの追記に使う日付見出し (全画面表示では markdown の見出しとして描かれる)"""
+    return f"## {day.isoformat()}"
+
+
+def append_memo_heading(memo: str, day: date) -> str:
+    """メモの末尾に追記用の日付見出しを足した本文を返す
+
+    末尾から遡って最初に見つかる見出しがその日のものなら、同じ日の欄に
+    書き足すため見出しは足さない。戻り値は末尾にカーソルを置けばそのまま
+    続きが書ける形 (最後が改行) にする。
+    """
+    heading = memo_heading(day)
+    body = memo.rstrip()
+    if not body:
+        return f"{heading}\n"
+
+    for line in reversed(body.splitlines()):
+        if line.startswith("#"):
+            # 同じ日の欄が開いていれば、そこに続けて書く
+            return f"{body}\n" if line.strip() == heading else f"{body}\n\n{heading}\n"
+    return f"{body}\n\n{heading}\n"
+
+
 def _name_of(data: dict) -> str:
     """設定項目の名前を取り出す (空なら壊れているとみなす)"""
     name = data.get("name")

@@ -42,14 +42,27 @@ from .widgets.task_list import TaskTable
 log = logging.getLogger(__name__)
 
 
-def _overflows(memo: str, pane: Widget) -> bool:
-    """メモが詳細欄に収まらない量か (折り返しを見込んだ行数で判定する)"""
+def _memo_tail(memo: str, pane: Widget) -> tuple[str, bool]:
+    """詳細欄に出すメモと、入りきらず削ったかどうか
+
+    メモは日付ごとに書き足していくため、収まらないときは古い先頭ではなく
+    新しい末尾を残す (折り返しを見込んだ行数で数える)。
+    """
     width, height = pane.content_size.width, pane.content_size.height
     if width <= 0 or height <= 0:
-        return False
-    wrapped = sum(max(1, -(-cell_len(line) // width)) for line in memo.splitlines())
+        return memo, False
+
     # 1行目はタスクの概要に使うため、メモに使えるのは残りの行
-    return wrapped > height - 1
+    limit = height - 1
+    kept: list[str] = []
+    used = 0
+    for line in reversed(memo.splitlines()):
+        used += max(1, -(-cell_len(line) // width))
+        # 1行も出せなくなるのは避けるため、最初の1行は溢れても残す
+        if used > limit and kept:
+            return "\n".join(kept), True
+        kept.insert(0, line)
+    return memo, used > limit
 
 
 # 四半期の進捗バーの長さ (右パネルの幅27桁に「 100%」を足しても収まる長さ)
@@ -286,8 +299,8 @@ class TodoApp(App):
         """一覧の下の詳細欄を、選択中タスクの内容にする
 
         1行目にタスクの概要を出す (一覧のタグ列は幅に収まらない分を切っているため、
-        複数のタグはここで読む)。その下にメモを折り返して出し、入りきらない分は
-        m キーの全画面表示に任せる。
+        複数のタグはここで読む)。その下にメモを折り返して出し、入りきらないときは
+        新しい末尾側だけを残して、全文は m キーの全画面表示に任せる。
         """
         task = self.query_one("#task-table", TaskTable).selected_task
         pane = self.query_one("#memo-pane")
@@ -305,9 +318,10 @@ class TodoApp(App):
             body.update(Text("(メモなし) — m で書けます", style="dim"))
             return
 
-        body.update(Text(task.memo))
-        # 続きがあることが分かるように、収まらないときだけ見かたを添える
-        if _overflows(task.memo, pane):
+        tail, clipped = _memo_tail(task.memo, pane)
+        body.update(Text(tail))
+        # 前に書いた分があることが分かるように、収まらないときだけ見かたを添える
+        if clipped:
             pane.border_title = "詳細 (m でメモ全文)"
 
     def _save(self) -> None:

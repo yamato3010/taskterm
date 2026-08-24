@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 
 from markdown_it import MarkdownIt
@@ -16,6 +17,8 @@ from textual.binding import Binding
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Markdown, Static, TextArea
+
+from ..models import append_memo_heading
 
 
 def _hard_break(state: StateCore) -> None:
@@ -88,12 +91,13 @@ class MemoEditScreen(ModalScreen[Optional[str]]):
 
     def action_save(self) -> None:
         memo = self.query_one("#memo-editor", TextArea).text.strip()
-        # 読むだけで閉じたときに保存が走らないよう、変えていなければ None を返す
-        self.dismiss(memo if memo != self._memo else None)
+        # 読むだけ (追記の見出しを足しただけ) で閉じたときに保存が走らないよう、
+        # 前後の空白を落とした状態で比べて、変えていなければ None を返す
+        self.dismiss(memo if memo != self._memo.strip() else None)
 
 
 class MemoViewScreen(ModalScreen[Optional[str]]):
-    """メモを全画面で読む (e キーで編集に切り替えられる)
+    """メモを全画面で読む (e キーで編集、a キーで追記に切り替えられる)
 
     編集した場合は新しい本文を、変更せずに閉じた場合は None を返す。
     """
@@ -101,6 +105,7 @@ class MemoViewScreen(ModalScreen[Optional[str]]):
     BINDINGS = [
         Binding("escape", "close", "閉じる"),
         Binding("e", "edit", "編集"),
+        Binding("a", "append", "追記"),
     ]
 
     def __init__(self, title: str, meta: str, memo: str) -> None:
@@ -113,7 +118,7 @@ class MemoViewScreen(ModalScreen[Optional[str]]):
     def compose(self) -> ComposeResult:
         with Vertical(id="memo-dialog") as dialog:
             dialog.border_title = "メモ"
-            dialog.border_subtitle = "e 編集   j/k スクロール   Esc 閉じる"
+            dialog.border_subtitle = "e 編集   a 追記   j/k スクロール   Esc 閉じる"
 
             header = Text(self._title, style="bold")
             if self._meta:
@@ -134,7 +139,18 @@ class MemoViewScreen(ModalScreen[Optional[str]]):
         body.update(self._memo or "(メモなし) — e で書けます")
 
     def action_edit(self) -> None:
-        self.app.push_screen(MemoEditScreen(self._title, self._memo), self._on_edited)
+        self._open_editor(self._memo)
+
+    def action_append(self) -> None:
+        """今日の日付見出しを足した状態で編集を開く (続きを書き足すため)
+
+        見出しだけ足して何も書かずに閉じた場合は保存されないので、
+        使わなかった見出しがメモに残ることはない。
+        """
+        self._open_editor(append_memo_heading(self._memo, date.today()))
+
+    def _open_editor(self, memo: str) -> None:
+        self.app.push_screen(MemoEditScreen(self._title, memo), self._on_edited)
 
     def _on_edited(self, memo: Optional[str]) -> None:
         """編集から戻ったら、閉じずにそのまま表示を更新する"""
