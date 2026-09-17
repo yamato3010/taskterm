@@ -11,7 +11,7 @@ from textual.containers import Horizontal, Vertical
 from textual.content import Content
 from textual.screen import ModalScreen
 from rich.text import Text
-from textual.widgets import Button, Input, Label, Select, SelectionList, Static
+from textual.widgets import Button, Input, Label, Select, Static
 from textual.widgets.selection_list import Selection
 
 from ..config import Config
@@ -25,6 +25,7 @@ from ..models import (
     subtask_progress,
     textual_color,
 )
+from ..widgets.select_list import SelectList
 from .links import LinksScreen
 from .memo import MemoEditScreen
 from .subtasks import SubtasksScreen
@@ -114,7 +115,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
 
             yield Label("タグ (space で選択)")
             if config.tags:
-                yield SelectionList[str](
+                yield SelectList(
                     *[
                         Selection(
                             Content.styled(tag.name, textual_color(tag.color)),
@@ -252,7 +253,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         """選択されているタグのID (設定の並び順で返す)"""
         if not self._config.tags:
             return []
-        selected = set(self.query_one("#tags", SelectionList).selected)
+        selected = set(self.query_one("#tags", SelectList).selected)
         return [tag.id for tag in self._config.tags if tag.id in selected]
 
     def _save(self) -> None:
