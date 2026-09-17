@@ -19,6 +19,7 @@ from textual.widgets import Footer, Header, Static
 from . import storage
 from .config import Config
 from .models import (
+    Filter,
     Link,
     Quarter,
     Subtask,
@@ -31,6 +32,7 @@ from .models import (
 )
 from .screens.about import AboutScreen
 from .screens.confirm import ConfirmDeleteScreen
+from .screens.filter import FilterScreen
 from .screens.links import LinksScreen
 from .screens.memo import MemoViewScreen
 from .screens.settings import SettingsScreen
@@ -109,7 +111,7 @@ class TodoApp(App):
         Binding("space", "toggle_done", "完了"),
         Binding("s", "cycle_status", "状態"),
         Binding("d", "delete", "削除"),
-        Binding("f", "filter_tag", "絞込"),
+        Binding("f", "filter", "絞込"),
         Binding("m", "memo", "メモ"),
         Binding("o", "links", "リンク"),
         Binding("c", "subtasks", "チェック"),
@@ -136,7 +138,7 @@ class TodoApp(App):
         self._config = Config.load()
         self._tasks: list[Task] = storage.load_tasks(self._config)
         self._deleted: Task | None = None  # u キーで戻せる、直前に削除したタスク
-        self._tag_filter: str | None = None  # 絞り込み中のタグID (None なら絞り込みなし)
+        self._filter = Filter()  # 絞り込み中のステータス・タグ (空なら絞り込みなし)
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -201,10 +203,11 @@ class TodoApp(App):
         self._update_memo()
 
     def _filtered_tasks(self) -> list[Task]:
-        """タグの絞り込みを適用したタスク (f キーで切り替える)"""
-        if self._tag_filter is None:
+        """絞り込みを適用したタスク (f キーの絞り込み画面で決める)"""
+        if not self._filter.is_active:
             return self._tasks
-        return [t for t in self._tasks if self._tag_filter in t.tags]
+        status_of = self._config.status_of
+        return [t for t in self._tasks if self._filter.matches(t, status_of(t).id)]
 
     def _visible_tasks(self, today: date) -> list[Task]:
         """一覧に出すタスク
@@ -212,7 +215,7 @@ class TodoApp(App):
         既定では選択日が期限のタスクだけを出す。ただし今日を選んでいるときは
         期限切れの未完了タスクも足す (見落とすと困るため)。
         v キーで全件表示に切り替えると、期限なしのタスクも含めて全部出す。
-        どちらの場合もタグの絞り込みは効く。
+        どちらの場合も f キーの絞り込みは効く。
         """
         tasks = self._filtered_tasks()
         if self._config.show_all:
@@ -235,17 +238,19 @@ class TodoApp(App):
             marks[task.due] = (open_count + (0 if done else 1), total + 1)
         return marks
 
-    def _filter_tag_name(self) -> str:
-        """絞り込み中のタグ名 (絞り込んでいなければ空文字)"""
-        tag = self._config.tag_by_id(self._tag_filter) if self._tag_filter else None
-        return tag.name if tag else ""
+    def _filter_names(self) -> tuple[list[str], list[str]]:
+        """絞り込み中のステータス名とタグ名 (どちらも設定の並び順)"""
+        statuses = [s.name for s in self._config.statuses if s.id in self._filter.statuses]
+        tags = [t.name for t in self._config.tags if t.id in self._filter.tags]
+        return statuses, tags
 
     def _update_title(self, visible: list[Task]) -> None:
         """左パネルのタイトルに、今出している範囲と件数を書く"""
         selected = self.query_one("#calendar", MonthCalendar).selected
         scope = "全件" if self._config.show_all else format_due(selected)
-        tag_name = self._filter_tag_name()
-        scope += f" / {tag_name}" if tag_name else ""
+        statuses, tags = self._filter_names()
+        names = "・".join(statuses + tags)
+        scope += f" / {names}" if names else ""
         done = sum(1 for t in visible if self._config.is_done(t))
         self.query_one("#task-panel").border_title = (
             f"TODO — {scope}  {len(visible)}件 (完了 {done})"
@@ -282,16 +287,23 @@ class TodoApp(App):
         text.append("\n" if self._config.show_all else "  (v で表示)\n", style="dim")
 
         # ステータス別の件数 (設定の並び順・色で出す)
+        # ここはステータスの分布を見るためのものなので、ステータスの絞り込みは掛けない
         text.append("\n")
-        counts = Counter(config.status_of(t).id for t in tasks)
+        counts = Counter(
+            config.status_of(t).id for t in self._tasks if self._filter.matches_tags(t)
+        )
         for status in config.statuses:
             text.append(status.name, style=status.color)
             text.append(f" {counts.get(status.id, 0)}件\n", style="dim")
 
-        tag_name = self._filter_tag_name()
-        if tag_name:
-            text.append(f"\n絞り込み: {tag_name}\n", style="dim")
-            text.append("f で次のタグ / 解除", style="dim")
+        statuses, tags = self._filter_names()
+        if statuses or tags:
+            text.append("\n絞り込み\n", style="dim")
+            if statuses:
+                text.append(f"状態 {'・'.join(statuses)}\n", style="dim")
+            if tags:
+                text.append(f"タグ {'・'.join(tags)}\n", style="dim")
+            text.append("f で変更・解除", style="dim")
 
         self.query_one("#summary", Static).update(text)
 
@@ -510,23 +522,23 @@ class TodoApp(App):
         self._save_config()
         self._refresh()
 
-    def action_filter_tag(self) -> None:
-        """タグの絞り込みを次のタグに切り替える (最後のタグの次は解除)"""
-        ids = [t.id for t in self._config.tags]
-        if not ids:
-            self.notify("タグがありません (, の設定画面で追加できます)", timeout=5)
+    def action_filter(self) -> None:
+        """絞り込み画面を開く (ステータス・タグで一覧を絞る)"""
+        self.push_screen(
+            FilterScreen(self._config, self._filter), self._on_filter_changed
+        )
+
+    def _on_filter_changed(self, new_filter: Optional[Filter]) -> None:
+        """絞り込み画面で決まった条件を反映する (取り消したら None が来る)"""
+        if new_filter is None:
             return
-
-        if self._tag_filter not in ids:
-            self._tag_filter = ids[0]
-        else:
-            index = ids.index(self._tag_filter) + 1
-            self._tag_filter = ids[index] if index < len(ids) else None
-
+        self._filter = new_filter
         self._refresh()
-        tag_name = self._filter_tag_name()
+
+        statuses, tags = self._filter_names()
+        names = "・".join(statuses + tags)
         self.notify(
-            f"絞り込み: {tag_name}" if tag_name else "絞り込みを解除しました", timeout=3
+            f"絞り込み: {names}" if names else "絞り込みを解除しました", timeout=3
         )
 
     def action_today(self) -> None:
@@ -568,8 +580,9 @@ class TodoApp(App):
         # 設定から消されたステータス・タグを参照しているタスクを直す
         for task in self._tasks:
             config.normalize_task(task)
-        if self._tag_filter is not None and config.tag_by_id(self._tag_filter) is None:
-            self._tag_filter = None
+        # 設定から消された項目が絞り込みに残らないようにする
+        self._filter.statuses &= {s.id for s in config.statuses}
+        self._filter.tags &= {t.id for t in config.tags}
 
         self._save()
         self.notify("設定を保存しました", timeout=4)

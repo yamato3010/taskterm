@@ -403,3 +403,34 @@ class Task:
             subtasks=subtasks,
             id=str(data.get("id") or uuid.uuid4().hex),
         )
+
+
+@dataclass
+class Filter:
+    """一覧の絞り込み条件 (f キーの絞り込み画面で決める)
+
+    ステータス・タグとも ID の集合で持ち、空の場合はその項目では絞らない。
+    タグを複数選んだときは「いずれかを含む」(OR) で判定する。
+    アプリを閉じるまでの一時的な状態なので、設定ファイルには保存しない。
+    """
+
+    statuses: set[str] = field(default_factory=set)
+    tags: set[str] = field(default_factory=set)
+
+    @property
+    def is_active(self) -> bool:
+        """何かで絞り込んでいるか"""
+        return bool(self.statuses or self.tags)
+
+    def matches_tags(self, task: Task) -> bool:
+        """タグの条件だけで判定する (ステータス別の件数を数えるとき用)"""
+        return not self.tags or bool(self.tags.intersection(task.tags))
+
+    def matches(self, task: Task, status_id: str) -> bool:
+        """タスクが条件に合うか
+
+        ``status_id`` は、設定に無いIDを既定へ寄せた後の表示上のステータス。
+        """
+        if self.statuses and status_id not in self.statuses:
+            return False
+        return self.matches_tags(task)
