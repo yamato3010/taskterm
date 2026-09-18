@@ -5,12 +5,15 @@
 ## 使い方
 
 ```sh
-# 開発中はこのリポジトリの仮想環境から
-./myenv/bin/taskterm
-
-# インストールして使う場合
-pipx install .
+# PyPI から入れて使う
+pipx install taskterm
 taskterm
+
+# このリポジトリのソースから入れる場合
+pipx install .
+
+# 開発中はリポジトリの仮想環境から
+./myenv/bin/taskterm
 ```
 
 ## キー操作
