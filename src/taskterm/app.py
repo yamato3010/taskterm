@@ -412,6 +412,8 @@ class TodoApp(App):
             return
         if all(t.id != task.id for t in self._tasks):
             self._tasks.append(task)
+            # 追加したタスクが今のタブに出ないと、消えてしまったように見える
+            self._show_tab(done=self._config.is_done(task))
         self._save()
 
     def action_toggle_done(self) -> None:
@@ -571,8 +573,12 @@ class TodoApp(App):
         self._refresh()
 
     def action_toggle_tab(self) -> None:
-        """未完了 ⇄ 完了 のタブを切り替える (一覧の更新はタブのイベント側で行う)"""
-        self.query_one("#task-tabs", Tabs).active = "open" if self._done_view else "done"
+        """未完了 ⇄ 完了 のタブを切り替える"""
+        self._show_tab(done=not self._done_view)
+
+    def _show_tab(self, *, done: bool) -> None:
+        """タブを開く (一覧の更新はタブのイベント側で行う)"""
+        self.query_one("#task-tabs", Tabs).active = "done" if done else "open"
 
     def action_filter(self) -> None:
         """絞り込み画面を開く (ステータス・タグで一覧を絞る)"""
