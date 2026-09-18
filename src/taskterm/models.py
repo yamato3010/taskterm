@@ -106,7 +106,7 @@ def priority_rank(priority: str) -> int:
 
 
 def format_due(due: date | None) -> str:
-    """期限を「8/6(木)」の形にする (期限なしは空文字)"""
+    """日付を「8/6(木)」の形にする (None は空文字)"""
     if due is None:
         return ""
     return f"{due.month}/{due.day}({WEEKDAYS[due.weekday()]})"
@@ -326,7 +326,8 @@ class Task:
     """1件のタスク
 
     ステータスとタグは設定側の項目を ID で参照する。完了かどうかは
-    ステータスの ``done`` で決まるため、タスク自身は持たない。
+    ステータスの ``done`` で決まるため、タスク自身は持たない (持つのは
+    「いつ完了にしたか」だけ)。
     """
 
     title: str
@@ -334,6 +335,7 @@ class Task:
     priority: str = DEFAULT_PRIORITY
     memo: str = ""
     status: str = ""  # Status.id (空・未知なら既定ステータス扱い)
+    done_at: date | None = None  # 完了にした日 (未完了なら None。旧データは None のまま)
     tags: list[str] = field(default_factory=list)  # Tag.id のリスト
     links: list[Link] = field(default_factory=list)
     subtasks: list[Subtask] = field(default_factory=list)
@@ -348,6 +350,7 @@ class Task:
             "priority": self.priority,
             "memo": self.memo,
             "status": self.status,
+            "done_at": self.done_at.isoformat() if self.done_at else None,
             "tags": list(self.tags),
             "links": [link.to_dict() for link in self.links],
             "subtasks": [item.to_dict() for item in self.subtasks],
@@ -372,6 +375,13 @@ class Task:
         priority = data.get("priority", DEFAULT_PRIORITY)
         if priority not in PRIORITIES:
             priority = DEFAULT_PRIORITY
+
+        # 完了日は無くても困らないので、壊れていればタスクごと飛ばさず捨てる
+        done_at_raw = data.get("done_at")
+        try:
+            done_at = date.fromisoformat(done_at_raw) if done_at_raw else None
+        except (TypeError, ValueError):
+            done_at = None
 
         raw_tags = data.get("tags")
         tags = [str(t) for t in raw_tags] if isinstance(raw_tags, list) else []
@@ -398,6 +408,7 @@ class Task:
             priority=priority,
             memo=str(data.get("memo") or ""),
             status=str(data.get("status") or ""),
+            done_at=done_at,
             tags=tags,
             links=links,
             subtasks=subtasks,

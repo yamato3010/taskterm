@@ -95,6 +95,21 @@ class Config:
         """完了扱いのステータスか"""
         return self.status_of(task).done
 
+    def apply_status(self, task: Task, status_id: str, today: date) -> None:
+        """タスクのステータスを変え、完了日を付け外しする
+
+        ステータスを変える経路 (完了の切り替え・s キー・編集フォーム) は全て
+        ここを通す。未完了から完了になったときだけ ``today`` を記録し、未完了に
+        戻したら消す。完了のまま別の完了ステータスに移した場合は最初の日を残す。
+        """
+        was_done = self.is_done(task)
+        task.status = status_id
+        if self.is_done(task):
+            if not was_done:
+                task.done_at = today
+        else:
+            task.done_at = None
+
     def is_overdue(self, task: Task, today: date) -> bool:
         """期限を過ぎた未完了タスクか"""
         return not self.is_done(task) and task.due is not None and task.due < today
@@ -112,6 +127,17 @@ class Config:
             ),
         )
 
+    def sort_done_tasks(self, tasks: list[Task]) -> list[Task]:
+        """完了タブ用に、完了日の新しい順で並べる
+
+        完了日を持たない旧データは日付で比べられないので末尾にまとめる。
+        """
+        return sorted(
+            tasks,
+            # 新しい順にしたいので、日付そのものではなく通日の符号を反転して使う
+            key=lambda t: (t.done_at is None, -(t.done_at or date.min).toordinal(), t.title),
+        )
+
     def normalize_task(self, task: Task, *, legacy_done: bool = False) -> None:
         """ステータス・タグを今の設定に合わせて正す
 
@@ -122,6 +148,10 @@ class Config:
         if self.status_by_id(task.status) is None:
             fallback = (self.done_status() if legacy_done else None) or self.default_status()
             task.status = fallback.id
+        # 完了ステータスを消したタスクに完了日が残らないようにする
+        # (逆は補わない。完了日を持たない旧データはそのまま「完了日なし」で扱う)
+        if not self.is_done(task):
+            task.done_at = None
         known = {t.id for t in self.tags}
         task.tags = [t for t in task.tags if t in known]
 

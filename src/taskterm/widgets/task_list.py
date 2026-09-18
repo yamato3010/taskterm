@@ -39,23 +39,35 @@ class TaskTable(DataTable):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._tasks: list[Task] = []
+        self._done_view = False  # 完了タブを出しているか (2列目が期限か完了日か)
         self.cursor_type = "row"
         self.zebra_stripes = True
 
     def on_mount(self) -> None:
+        self._add_columns()
+
+    def _add_columns(self) -> None:
+        """列を作る (2列目は出しているタブで期限・完了日が入れ替わる)"""
         self.add_column("ステータス", width=_STATUS_WIDTH)
-        self.add_column("期限", width=_DUE_WIDTH)
+        self.add_column("完了日" if self._done_view else "期限", width=_DUE_WIDTH)
         self.add_column("優先", width=_PRIORITY_WIDTH)
         self.add_column("タグ", width=_TAGS_WIDTH)
         self.add_column("タスク")
 
-    def update_tasks(self, tasks: list[Task], today: date, config: Config) -> None:
+    def update_tasks(
+        self, tasks: list[Task], today: date, config: Config, *, done_view: bool = False
+    ) -> None:
         """一覧を作り直す (選択中だったタスクにカーソルを戻す)"""
         previous = self.selected_task
+        if done_view != self._done_view:
+            # 2列目の見出しを入れ替えるには列ごと作り直すしかない
+            self._done_view = done_view
+            self.clear(columns=True)
+            self._add_columns()
         self._tasks = list(tasks)
         self.clear()
         for task in tasks:
-            self.add_row(*_row(task, today, config))
+            self.add_row(*_row(task, today, config, done_view))
 
         if previous is not None:
             for i, task in enumerate(tasks):
@@ -72,18 +84,22 @@ class TaskTable(DataTable):
         return None
 
 
-def _row(task: Task, today: date, config: Config) -> tuple[Text, ...]:
-    """タスク1件を行の内容にする"""
+def _row(task: Task, today: date, config: Config, done_view: bool) -> tuple[Text, ...]:
+    """タスク1件を行の内容にする (完了タブでは2列目が完了日になる)"""
     status = config.status_of(task)
     done = status.done
 
     status_cell = Text(status.name, style=status.color, **_CLIP)
 
-    due = Text(format_due(task.due))
-    if config.is_overdue(task, today):
-        due.stylize("bold red")
-    elif task.due == today and not done:
-        due.stylize("bold yellow")
+    if done_view:
+        # 完了日を持たない旧データは日付が出せないので、空欄と分かるように印を置く
+        date_cell = Text(format_due(task.done_at) or "—", style="" if task.done_at else "dim")
+    else:
+        date_cell = Text(format_due(task.due))
+        if config.is_overdue(task, today):
+            date_cell.stylize("bold red")
+        elif task.due == today and not done:
+            date_cell.stylize("bold yellow")
 
     priority = Text(priority_label(task.priority), style=priority_style(task.priority))
 
@@ -105,4 +121,4 @@ def _row(task: Task, today: date, config: Config) -> tuple[Text, ...]:
         checked, total = subtask_progress(task.subtasks)
         title.append(f" {checked}/{total}", style="dim")
 
-    return status_cell, due, priority, tags, title
+    return status_cell, date_cell, priority, tags, title

@@ -21,6 +21,12 @@ Screen {
     border: round ansi_bright_black;
     border-title-color: ansi_white;
     border-title-style: bold;
+    border-subtitle-color: ansi_bright_black;
+}
+
+/* 未完了・完了のタブ (w で切り替える)。既定の2行のまま、左端を表の列に揃える */
+#task-tabs {
+    margin: 0 1;
 }
 
 /* 操作対象のパネルが分かるように、フォーカス中は枠の色を変える */

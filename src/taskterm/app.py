@@ -14,7 +14,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.widget import Widget
-from textual.widgets import Footer, Header, Static
+from textual.widgets import Footer, Header, Static, Tab, Tabs
 
 from . import storage
 from .config import Config
@@ -123,6 +123,7 @@ class TodoApp(App):
         Binding("u", "undo", "削除を元に戻す", show=False),
         Binding("p", "cycle_priority", "優先度を切り替え", show=False),
         Binding("t", "today", "今日に戻る", show=False),
+        Binding("w", "toggle_tab", "未完了・完了のタブを切り替え", show=False),
         Binding("tab", "focus_next", "パネル移動", show=False),
         # h/l はカレンダーにフォーカスが無くても日を動かせるようにする
         # (カレンダーにフォーカスがあるときは MonthCalendar 側の同じキーが働く)
@@ -139,13 +140,19 @@ class TodoApp(App):
         self._tasks: list[Task] = storage.load_tasks(self._config)
         self._deleted: Task | None = None  # u キーで戻せる、直前に削除したタスク
         self._filter = Filter()  # 絞り込み中のステータス・タグ (空なら絞り込みなし)
+        self._done_view = False  # 「完了」タブを見ているか (起動時は「未完了」)
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
 
         with Horizontal(id="main"):
             # 左: TODOリスト (下端に選択中タスクの概要とメモ)
-            with Vertical(id="task-panel"):
+            with Vertical(id="task-panel") as task_panel:
+                task_panel.border_subtitle = "w タブ切替"
+                tabs = Tabs(Tab("未完了", id="open"), Tab("完了", id="done"), id="task-tabs")
+                # 切り替えは w キーに任せ、tab キーのパネル移動に割り込ませない
+                tabs.can_focus = False
+                yield tabs
                 yield TaskTable(id="task-table")
                 with Container(id="memo-pane") as memo_pane:
                     memo_pane.border_title = "詳細"
@@ -180,6 +187,11 @@ class TodoApp(App):
         """カレンダーの選択日が変わったら一覧を作り直す"""
         self._refresh()
 
+    def on_tabs_tab_activated(self, event: Tabs.TabActivated) -> None:
+        """タブが変わったら一覧を作り直す (w キーでもクリックでもここに来る)"""
+        self._done_view = event.tab.id == "done"
+        self._refresh()
+
     def on_data_table_row_highlighted(self) -> None:
         """カーソル移動でメモ表示を追従させる"""
         self._update_memo()
@@ -195,7 +207,9 @@ class TodoApp(App):
         today = date.today()
         visible = self._visible_tasks(today)
 
-        self.query_one("#task-table", TaskTable).update_tasks(visible, today, self._config)
+        self.query_one("#task-table", TaskTable).update_tasks(
+            visible, today, self._config, done_view=self._done_view
+        )
         self.query_one("#calendar", MonthCalendar).set_marks(self._marks())
         self._update_title(visible)
         self._update_quarter(today)
@@ -212,20 +226,31 @@ class TodoApp(App):
     def _visible_tasks(self, today: date) -> list[Task]:
         """一覧に出すタスク
 
-        既定では選択日が期限のタスクだけを出す。ただし今日を選んでいるときは
-        期限切れの未完了タスクも足す (見落とすと困るため)。
+        「完了」タブでは完了したタスクだけを、期限に関わらず全件、完了日の
+        新しい順で出す (溜まった分をあとから見返すための場所)。
+
+        「未完了」タブは既定では選択日が期限のタスクだけを出す。ただし今日を
+        選んでいるときは期限切れのタスクも足す (見落とすと困るため)。
         v キーで全件表示に切り替えると、期限なしのタスクも含めて全部出す。
-        どちらの場合も f キーの絞り込みは効く。
+        どちらのタブでも f キーの絞り込みは効く (完了タブはタグのみ)。
         """
-        tasks = self._filtered_tasks()
-        if self._config.show_all:
-            return self._config.sort_tasks(tasks)
+        config = self._config
+        if self._done_view:
+            # ステータスで絞り込んだままだと完了タブが必ず空になるので、タグだけ効かせる
+            done = [
+                t for t in self._tasks if config.is_done(t) and self._filter.matches_tags(t)
+            ]
+            return config.sort_done_tasks(done)
+
+        tasks = [t for t in self._filtered_tasks() if not config.is_done(t)]
+        if config.show_all:
+            return config.sort_tasks(tasks)
 
         selected = self.query_one("#calendar", MonthCalendar).selected
         visible = [t for t in tasks if t.due == selected]
         if selected == today:
-            visible += [t for t in tasks if self._config.is_overdue(t, today)]
-        return self._config.sort_tasks(visible)
+            visible += [t for t in tasks if config.is_overdue(t, today)]
+        return config.sort_tasks(visible)
 
     def _marks(self) -> dict[date, tuple[int, int]]:
         """カレンダーの印用に、期限日ごとの (未完了数, 総数) を数える"""
@@ -246,15 +271,17 @@ class TodoApp(App):
 
     def _update_title(self, visible: list[Task]) -> None:
         """左パネルのタイトルに、今出している範囲と件数を書く"""
-        selected = self.query_one("#calendar", MonthCalendar).selected
-        scope = "全件" if self._config.show_all else format_due(selected)
         statuses, tags = self._filter_names()
-        names = "・".join(statuses + tags)
+        if self._done_view:
+            # 完了タブはステータスの絞り込みを掛けないので、タグだけ書く
+            scope = "完了"
+            names = "・".join(tags)
+        else:
+            selected = self.query_one("#calendar", MonthCalendar).selected
+            scope = "全件" if self._config.show_all else format_due(selected)
+            names = "・".join(statuses + tags)
         scope += f" / {names}" if names else ""
-        done = sum(1 for t in visible if self._config.is_done(t))
-        self.query_one("#task-panel").border_title = (
-            f"TODO — {scope}  {len(visible)}件 (完了 {done})"
-        )
+        self.query_one("#task-panel").border_title = f"TODO — {scope}  {len(visible)}件"
 
     def _update_quarter(self, today: date) -> None:
         """四半期パネルを更新する (設定でオフなら枠ごと隠す)
@@ -390,7 +417,7 @@ class TodoApp(App):
             return
         config = self._config
         if config.is_done(task):
-            task.status = config.undone_status().id
+            config.apply_status(task, config.undone_status().id, date.today())
         else:
             done = config.done_status()
             if done is None:
@@ -400,14 +427,14 @@ class TodoApp(App):
                     timeout=6,
                 )
                 return
-            task.status = done.id
+            config.apply_status(task, done.id, date.today())
         self._save()
 
     def action_cycle_status(self) -> None:
         """ステータスを設定の並び順で次に進める"""
         task = self._selected_task()
         if task is not None:
-            task.status = self._config.next_status(task).id
+            self._config.apply_status(task, self._config.next_status(task).id, date.today())
             self._save()
 
     def action_cycle_priority(self) -> None:
@@ -518,9 +545,16 @@ class TodoApp(App):
 
     def action_toggle_view(self) -> None:
         """選択日のみ / 全件 を切り替える (次の起動でも同じ表示で始める)"""
+        if self._done_view:
+            self.notify("完了タブは常に全件です (w で未完了に戻ります)", timeout=4)
+            return
         self._config.show_all = not self._config.show_all
         self._save_config()
         self._refresh()
+
+    def action_toggle_tab(self) -> None:
+        """未完了 ⇄ 完了 のタブを切り替える (一覧の更新はタブのイベント側で行う)"""
+        self.query_one("#task-tabs", Tabs).active = "open" if self._done_view else "done"
 
     def action_filter(self) -> None:
         """絞り込み画面を開く (ステータス・タグで一覧を絞る)"""

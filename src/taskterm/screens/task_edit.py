@@ -279,27 +279,27 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         links = self._links
         subtasks = self._subtasks
 
+        # ステータスは完了日の付け外しがあるので apply_status 経由で入れる
         task = self._target
         if task is None:
-            self.dismiss(
-                Task(
-                    title=title,
-                    due=due,
-                    priority=priority,
-                    memo=memo,
-                    status=status,
-                    tags=tags,
-                    links=links,
-                    subtasks=subtasks,
-                )
+            task = Task(
+                title=title,
+                due=due,
+                priority=priority,
+                memo=memo,
+                tags=tags,
+                links=links,
+                subtasks=subtasks,
             )
+            self._config.apply_status(task, status, date.today())
+            self.dismiss(task)
             return
 
         task.title = title
         task.due = due
         task.priority = priority
         task.memo = memo
-        task.status = status
+        self._config.apply_status(task, status, date.today())
         task.tags = tags
         task.links = links
         task.subtasks = subtasks
