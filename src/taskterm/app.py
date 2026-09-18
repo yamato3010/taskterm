@@ -36,6 +36,7 @@ from .screens.filter import FilterScreen
 from .screens.links import LinksScreen
 from .screens.memo import MemoViewScreen
 from .screens.settings import SettingsScreen
+from .screens.status import StatusScreen
 from .screens.subtasks import SubtasksScreen
 from .screens.task_edit import TaskEditScreen
 from .widgets.calendar import MonthCalendar
@@ -109,7 +110,7 @@ class TodoApp(App):
         Binding("a", "add", "追加"),
         Binding("e", "edit", "編集"),
         Binding("space", "toggle_done", "完了"),
-        Binding("s", "cycle_status", "状態"),
+        Binding("s", "change_status", "状態"),
         Binding("d", "delete", "削除"),
         Binding("f", "filter", "絞込"),
         Binding("m", "memo", "メモ"),
@@ -430,12 +431,26 @@ class TodoApp(App):
             config.apply_status(task, done.id, date.today())
         self._save()
 
-    def action_cycle_status(self) -> None:
-        """ステータスを設定の並び順で次に進める"""
+    def action_change_status(self) -> None:
+        """ステータスを一覧から選び直す
+
+        並び順で次に送る形だと、完了扱いに入った時点でタスクが完了タブへ移り、
+        そこから先に送れなくなるため選ぶ形にしている。
+        """
         task = self._selected_task()
-        if task is not None:
-            self._config.apply_status(task, self._config.next_status(task).id, date.today())
-            self._save()
+        if task is None:
+            return
+        self.push_screen(
+            StatusScreen(self._config, task.title, self._config.status_of(task).id),
+            lambda status_id: self._on_status_chosen(task, status_id),
+        )
+
+    def _on_status_chosen(self, task: Task, status_id: Optional[str]) -> None:
+        """選ばれたステータスに移す (取り消したら None が来る)"""
+        if status_id is None:
+            return
+        self._config.apply_status(task, status_id, date.today())
+        self._save()
 
     def action_cycle_priority(self) -> None:
         """優先度を 高 → 中 → 低 と切り替える"""

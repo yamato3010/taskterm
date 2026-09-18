@@ -84,11 +84,6 @@ class Config:
         """タスクのタグ (設定の並び順で返す)"""
         return [t for t in self.tags if t.id in task.tags]
 
-    def next_status(self, task: Task) -> Status:
-        """s キーで進める次のステータス"""
-        index = self.statuses.index(self.status_of(task))
-        return self.statuses[(index + 1) % len(self.statuses)]
-
     # ── タスクの意味付け ──────────────────────
 
     def is_done(self, task: Task) -> bool:
