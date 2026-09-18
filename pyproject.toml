@@ -17,7 +17,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "textual>=6.0",
+    # 端末の配色に追従する ansi-dark テーマが入ったのが 8.2.5 (それ以前は起動できない)
+    "textual>=8.2.5",
     "rich>=13.0.0",
 ]
 
