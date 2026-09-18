@@ -156,7 +156,7 @@ class TodoApp(App):
                     # 切り替えは w キーに任せ、tab キーのパネル移動に割り込ませない
                     tabs.can_focus = False
                     yield tabs
-                    yield Static("w で切替", id="tab-hint")
+                    yield Static("◂ w で切替", id="tab-hint")
                 yield TaskTable(id="task-table")
                 with Container(id="memo-pane") as memo_pane:
                     memo_pane.border_title = "詳細"

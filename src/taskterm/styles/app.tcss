@@ -30,12 +30,14 @@ Screen {
     margin: 0 1;
 }
 
+/* Tabs は中身に合わせて縮まないので、2つのタブが収まる幅を与えて
+   案内をその右隣に置く (全幅のままだと案内が端末の右端まで離れてしまう) */
 #task-tabs {
-    width: 1fr;
+    width: 16;
 }
 
 #tab-hint {
-    width: auto;
+    width: 1fr;
     height: 1;
     color: ansi_bright_black;
 }
