@@ -117,6 +117,7 @@ class TodoApp(App):
         Binding("o", "links", "リンク"),
         Binding("c", "subtasks", "チェック"),
         Binding("v", "toggle_view", "表示"),
+        Binding("w", "toggle_tab", "タブ"),
         Binding("comma", "settings", "設定"),
         Binding("question_mark", "show_help_panel", "ヘルプ"),
         Binding("q", "quit", "終了"),
@@ -124,7 +125,6 @@ class TodoApp(App):
         Binding("u", "undo", "削除を元に戻す", show=False),
         Binding("p", "cycle_priority", "優先度を切り替え", show=False),
         Binding("t", "today", "今日に戻る", show=False),
-        Binding("w", "toggle_tab", "未完了・完了のタブを切り替え", show=False),
         Binding("tab", "focus_next", "パネル移動", show=False),
         # h/l はカレンダーにフォーカスが無くても日を動かせるようにする
         # (カレンダーにフォーカスがあるときは MonthCalendar 側の同じキーが働く)
@@ -148,12 +148,15 @@ class TodoApp(App):
 
         with Horizontal(id="main"):
             # 左: TODOリスト (下端に選択中タスクの概要とメモ)
-            with Vertical(id="task-panel") as task_panel:
-                task_panel.border_subtitle = "w タブ切替"
-                tabs = Tabs(Tab("未完了", id="open"), Tab("完了", id="done"), id="task-tabs")
-                # 切り替えは w キーに任せ、tab キーのパネル移動に割り込ませない
-                tabs.can_focus = False
-                yield tabs
+            with Vertical(id="task-panel"):
+                # 一覧の上に「未完了 / 完了」のタブ。フッターは端末が狭いと末尾から
+                # 切れてしまうので、切り替えキーの案内はタブの横にも出す
+                with Horizontal(id="task-tabs-row"):
+                    tabs = Tabs(Tab("未完了", id="open"), Tab("完了", id="done"), id="task-tabs")
+                    # 切り替えは w キーに任せ、tab キーのパネル移動に割り込ませない
+                    tabs.can_focus = False
+                    yield tabs
+                    yield Static("w で切替", id="tab-hint")
                 yield TaskTable(id="task-table")
                 with Container(id="memo-pane") as memo_pane:
                     memo_pane.border_title = "詳細"

@@ -21,12 +21,23 @@ Screen {
     border: round ansi_bright_black;
     border-title-color: ansi_white;
     border-title-style: bold;
-    border-subtitle-color: ansi_bright_black;
 }
 
-/* 未完了・完了のタブ (w で切り替える)。既定の2行のまま、左端を表の列に揃える */
-#task-tabs {
+/* 未完了・完了のタブと、切り替えキーの案内を1行に並べる
+   (タブは見出しと下線で2行使うので、案内は上の行に揃える) */
+#task-tabs-row {
+    height: 2;
     margin: 0 1;
+}
+
+#task-tabs {
+    width: 1fr;
+}
+
+#tab-hint {
+    width: auto;
+    height: 1;
+    color: ansi_bright_black;
 }
 
 /* 操作対象のパネルが分かるように、フォーカス中は枠の色を変える */
