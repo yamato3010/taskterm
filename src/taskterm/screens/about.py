@@ -14,7 +14,7 @@ from textual.widgets import Static
 
 from .. import __version__
 from ..config import config_path
-from ..storage import tasks_path
+from ..storage import chat_path, tasks_path
 
 APP_NAME = "taskterm"
 APP_DESCRIPTION = "ターミナルで動くTODO・タスク管理アプリ"
@@ -52,6 +52,7 @@ def build_about_text() -> Text:
     # 画面からは辿れないため、データの置き場所もここに出す
     text.append("\n保存先\n", style="dim")
     text.append(f"  {_short(tasks_path())}\n")
+    text.append(f"  {_short(chat_path())}\n")
     text.append(f"  {_short(config_path())}")
 
     return text

@@ -508,6 +508,61 @@ SubtasksScreen {
     color: ansi_bright_black;
 }
 
+/* ── 自分宛てチャット (全画面) ─────── */
+ChatScreen {
+    background: ansi_default;
+}
+
+#chat-dialog {
+    width: 100%;
+    height: 100%;
+    padding: 0 1;
+    border: round ansi_blue;
+    border-title-color: ansi_white;
+    border-title-style: bold;
+}
+
+#chat-log {
+    height: 1fr;
+    padding: 0 1;
+    scrollbar-size-vertical: 1;
+}
+
+/* 幅は本文に合わせて縮め、長い本文は7割の幅で折り返す
+   (右下の時刻が欠けないための最小幅は Bubble 側で決める) */
+.bubble {
+    width: auto;
+    max-width: 70%;
+    padding: 0 1;
+    border: round ansi_bright_black;
+    border-subtitle-color: ansi_bright_black;
+}
+
+/* 一覧にいるときだけ、選んでいる吹き出しの枠を光らせる */
+#chat-log:focus .bubble.selected {
+    border: round ansi_blue;
+    border-subtitle-color: ansi_blue;
+}
+
+.chat-day, .chat-empty {
+    width: 100%;
+    margin-top: 1;
+    content-align: center middle;
+    color: ansi_bright_black;
+}
+
+/* 改行した分だけ高くなり、長くなったら入力欄の中でスクロールする */
+#chat-input {
+    height: auto;
+    max-height: 8;
+    margin-top: 1;
+}
+
+#chat-hint {
+    height: 1;
+    color: ansi_bright_black;
+}
+
 /* ── ステータスの選択 ───────────── */
 StatusScreen {
     align: center middle;

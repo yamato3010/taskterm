@@ -11,9 +11,10 @@ from textual.widgets import Button, Static
 
 
 class ConfirmDeleteScreen(ModalScreen[bool]):
-    """タスクを削除してよいか尋ねる
+    """タスク (または kind で指定したもの) を削除してよいか尋ねる
 
-    削除するなら True を、取り消すなら False を返す。
+    削除するなら True を、取り消すなら False を返す。元に戻す手段が無いものは
+    undoable=False にして、u キーの案内を出さない。
     """
 
     BINDINGS = [
@@ -22,18 +23,23 @@ class ConfirmDeleteScreen(ModalScreen[bool]):
         Binding("escape", "cancel", "取消"),
     ]
 
-    def __init__(self, title: str) -> None:
+    def __init__(self, title: str, *, kind: str = "タスク", undoable: bool = True) -> None:
         super().__init__()
         self._title = title
+        self._kind = kind
+        self._undoable = undoable
 
     def compose(self) -> ComposeResult:
         with Vertical(id="confirm-dialog") as dialog:
             dialog.border_title = "削除の確認"
             dialog.border_subtitle = "y 削除   n / Esc 取消"
 
-            body = Text("このタスクを削除します\n\n")
+            body = Text(f"この{self._kind}を削除します\n\n")
             body.append(self._title, style="bold")
-            body.append("\n\nu キーで元に戻せます", style="dim")
+            if self._undoable:
+                body.append("\n\nu キーで元に戻せます", style="dim")
+            else:
+                body.append("\n\n元に戻せません", style="dim")
             yield Static(body, id="confirm-message")
 
             with Horizontal(id="confirm-buttons"):

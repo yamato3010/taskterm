@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 # 優先度: キー -> (表示名, Richのスタイル)
 # 色は端末のANSIパレットに追従する色名 (red/yellow/blue) を使う
@@ -414,6 +414,39 @@ class Task:
             subtasks=subtasks,
             id=str(data.get("id") or uuid.uuid4().hex),
         )
+
+
+@dataclass
+class ChatMessage:
+    """自分宛てチャットの1件
+
+    タスクには紐付かない書き置き。期限やステータスは持たず、残したいものは
+    チャット画面からタスクにする。
+    """
+
+    text: str
+    sent_at: datetime | None = None  # 送った日時 (読めない旧データは None で時刻を出さない)
+    edited: bool = False
+
+    def to_dict(self) -> dict:
+        """保存用の辞書にする"""
+        return {
+            "text": self.text,
+            "sent_at": self.sent_at.isoformat(timespec="seconds") if self.sent_at else None,
+            "edited": self.edited,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> ChatMessage:
+        """保存された辞書から復元する (本文が無ければ ValueError)"""
+        text = data.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("text が空です")
+        try:
+            sent_at = datetime.fromisoformat(data.get("sent_at") or "")
+        except (TypeError, ValueError):
+            sent_at = None
+        return cls(text=text.strip(), sent_at=sent_at, edited=bool(data.get("edited", False)))
 
 
 @dataclass

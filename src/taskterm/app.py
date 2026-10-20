@@ -31,6 +31,7 @@ from .models import (
     subtask_progress,
 )
 from .screens.about import AboutScreen
+from .screens.chat import ChatScreen
 from .screens.confirm import ConfirmDeleteScreen
 from .screens.filter import FilterScreen
 from .screens.links import LinksScreen
@@ -116,6 +117,7 @@ class TodoApp(App):
         Binding("m", "memo", "メモ"),
         Binding("o", "links", "リンク"),
         Binding("c", "subtasks", "チェック"),
+        Binding("n", "chat", "自分メモ"),
         Binding("v", "toggle_view", "表示"),
         Binding("w", "toggle_tab", "タブ"),
         Binding("comma", "settings", "設定"),
@@ -139,6 +141,7 @@ class TodoApp(App):
         super().__init__()
         self._config = Config.load()
         self._tasks: list[Task] = storage.load_tasks(self._config)
+        self._messages = storage.load_messages()  # n キーの自分宛てチャット
         self._deleted: Task | None = None  # u キーで戻せる、直前に削除したタスク
         self._filter = Filter()  # 絞り込み中のステータス・タグ (空なら絞り込みなし)
         self._done_view = False  # 「完了」タブを見ているか (起動時は「未完了」)
@@ -536,6 +539,11 @@ class TodoApp(App):
             return
         task.subtasks = subtasks
         self._save()
+
+    def action_chat(self) -> None:
+        """自分宛てチャットを開く (保存はチャット画面が送信のたびに行う)"""
+        selected = self.query_one("#calendar", MonthCalendar).selected
+        self.push_screen(ChatScreen(self._messages, self._config, selected, self._on_edited))
 
     def _task_meta(self, task: Task) -> str:
         """詳細欄とメモ画面の見出しに出すタスクの概要

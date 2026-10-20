@@ -54,10 +54,13 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
         task: Task | None = None,
         *,
         default_due: date | None = None,
+        default_title: str = "",
     ) -> None:
         super().__init__()
         self._config = config
         self._target = task
+        # 追加のときのタイトルの初期値 (チャットのメッセージからタスクにする場合)
+        self._default_title = default_title
         # 追加のときは、カレンダーで選んでいる日を期限の初期値にする
         self._due = task.due if task else default_due
         # メモ・リンク・チェックリストは別画面で編集するため、保存までここで持つ
@@ -76,7 +79,7 @@ class TaskEditScreen(ModalScreen[Optional[Task]]):
 
             yield Label("タイトル")
             yield Input(
-                value=task.title if task else "",
+                value=task.title if task else self._default_title,
                 placeholder="やること",
                 compact=True,
                 id="title",
