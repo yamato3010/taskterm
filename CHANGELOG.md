@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/yamato3010/taskterm/compare/v0.2.0...v0.2.1) (2026-10-31)
+
+
+### Documentation
+
+* 📝 readmeにスクリーンショットを追加 ([ffaad04](https://github.com/yamato3010/taskterm/commit/ffaad043ced172e4b6202bee16739156bde090df))
+
 ## [0.2.0](https://github.com/yamato3010/taskterm/compare/v0.1.0...v0.2.0) (2026-09-18)
 
 
