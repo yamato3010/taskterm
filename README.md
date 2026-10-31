@@ -2,6 +2,23 @@
 
 ターミナルで動くTODO・タスク管理アプリ。
 
+## スクリーンショット
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="img/1.png" alt="タスク一覧とカレンダー" width="100%"><br>タスク一覧とカレンダーで、期限や進捗をひと目で確認。</td>
+    <td align="center" width="50%"><img src="img/2.png" alt="タスク編集画面" width="100%"><br>期限・優先度・ステータスなどをまとめて編集。</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="img/3.png" alt="Markdownメモの全画面表示" width="100%"><br>タスクごとのメモを、Markdownの装飾付きで表示。</td>
+    <td align="center"><img src="img/4.png" alt="チェックリスト画面" width="100%"><br>タスクをチェックリストに分解し、項目ごとの完了を管理。</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="img/5.png" alt="リンク追加画面" width="100%"><br>チケットや資料へのリンクを、タイトル付きで保存。</td>
+    <td align="center"><img src="img/6.png" alt="設定画面" width="100%"><br>ステータス・タグや四半期表示を、自分に合わせて設定。</td>
+  </tr>
+</table>
+
 ## 使い方
 
 ```sh
